@@ -1,5 +1,5 @@
 <sounds>
-    <activate template="ATTACH_01" file="resources/gs_activate.wav" linkNode="0>" />
-    <deactivate template="ATTACH_01" file="resources/gs_deactivate.wav" linkNode="0>" />
-    <warning template="ATTACH_01" file="resources/gs_warning_headland.wav" linkNode="0>" />
+    <activate file="resources/gs_activate.ogg" linkNode="0>" />
+    <deactivate file="resources/gs_deactivate.ogg" linkNode="0>" />
+    <warning file="resources/gs_warning_headland.ogg" linkNode="0>" />
 </sounds>

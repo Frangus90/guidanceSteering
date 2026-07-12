@@ -29,8 +29,6 @@ GuidanceSteeringStrategyFrame.CONTROLS = {
     HELP_BOX = "settingsHelpBoxText",
 
     LIST = "list",
-    TEMPLATE = "listItemTemplate",
-    CATEGORY_TEMPLATE = "listCategoryTemplate",
 }
 
 ---Creates a new instance of the GuidanceSteeringStrategyFrame.
@@ -43,7 +41,8 @@ function GuidanceSteeringStrategyFrame.new(ui, i18n)
     self.ui = ui
     self.i18n = i18n
     self.allowSave = false
-    self.rowToTrackId = {}
+    -- FS25: flat data-source array for the SmoothList track list, entries { trackId, name }.
+    self.tracks = {}
 
     self.lastLoadedTrackId = -1
 
@@ -65,6 +64,13 @@ function GuidanceSteeringStrategyFrame:initialize()
     })
 
     self.guidanceSteeringTrackNameElement:setText("Track name")
+
+    -- FS25: the SmoothList is data-source driven (setDataSource + reloadData + the
+    -- getNumberOfItemsInSection/populateCellForItemInSection callbacks below), replacing
+    -- the FS22 manual clone/deleteListItems API which was removed from SmoothListElement.
+    if self.list ~= nil and self.list.setDataSource ~= nil then
+        self.list:setDataSource(self)
+    end
 
     self:build()
 end
@@ -106,15 +112,11 @@ function GuidanceSteeringStrategyFrame:onFrameClose()
     GuidanceSteeringStrategyFrame:superClass().onFrameClose(self)
 
     if self.allowSave then
-        local element = self.rowToTrackId[self.list:getSelectedElement()]
-        if element ~= nil then
-            local trackId = element.trackId
-
-            if trackId ~= nil then
-                if self.lastLoadedTrackId ~= trackId then
-                    self:loadTrack(trackId)
-                    self.lastLoadedTrackId = trackId
-                end
+        local trackId = self:getSelectedTrackId()
+        if trackId ~= nil then
+            if self.lastLoadedTrackId ~= trackId then
+                self:loadTrack(trackId)
+                self.lastLoadedTrackId = trackId
             end
         end
 
@@ -124,20 +126,24 @@ function GuidanceSteeringStrategyFrame:onFrameClose()
     self.guidanceSteering:unsubscribe(self)
 end
 
-function GuidanceSteeringStrategyFrame:buildList()
-    local selectedElement = self.list:getSelectedElement()
-    local selectedTrackId, selectedIndex = nil, 2
-
-    if selectedElement ~= nil then
-        local track = self.rowToTrackId[selectedElement]
-        if track ~= nil then
-            selectedTrackId = track.trackId
-        end
+---FS25: reads the track id stored on the currently selected SmoothList cell (set in
+---populateCellForItemInSection). Returns nil when nothing is selected.
+function GuidanceSteeringStrategyFrame:getSelectedTrackId()
+    if self.list == nil or self.list.getSelectedElement == nil then
+        return nil
     end
 
-    self.list:deleteListItems()
+    local element = self.list:getSelectedElement()
+    return element ~= nil and element.trackId or nil
+end
 
-    self.rowToTrackId = {}
+function GuidanceSteeringStrategyFrame:buildList()
+    if self.list == nil then
+        return
+    end
+
+    -- Remember the current selection so we can restore it after the reload.
+    local selectedTrackId = self:getSelectedTrackId()
 
     local farmId = AccessHandler.EVERYONE
     local vehicle = self.ui:getVehicle()
@@ -145,45 +151,54 @@ function GuidanceSteeringStrategyFrame:buildList()
         farmId = vehicle:getOwnerFarmId()
     end
 
-    local groups = { "Base group" }
-    for _, group in ipairs(groups) do
+    self.tracks = {}
+    for id, track in pairs(self.guidanceSteering:getTracksForFarmId(farmId)) do
+        table.insert(self.tracks, { trackId = id, name = ("%s - %s"):format(id, track.name) })
+    end
 
-        for id, track in pairs(self.guidanceSteering:getTracksForFarmId(farmId)) do
-            local row = self:createItem(("%s - %s"):format(id, track.name))
-            local selectionIndex = #self.list.elements
+    -- getTracksForFarmId returns a hash; give the list a stable order by track id.
+    table.sort(self.tracks, function(lhs, rhs)
+        return lhs.trackId < rhs.trackId
+    end)
 
-            self.rowToTrackId[row] = { trackId = id, selectionIndex = selectionIndex }
+    self.list:reloadData()
 
-            if id == selectedTrackId then
-                selectedIndex = selectionIndex
-            end
+    -- Restore the previous selection, defaulting to the first row.
+    local selectedIndex = 1
+    for index, entry in ipairs(self.tracks) do
+        if entry.trackId == selectedTrackId then
+            selectedIndex = index
+            break
         end
     end
 
-    self.list:updateAbsolutePosition()
+    if #self.tracks > 0 and self.list.setSelectedIndex ~= nil then
+        self.list:setSelectedIndex(selectedIndex)
+    end
 
-    -- Go to cell 2 and cell 1 is a category
-    self.list:setSelectedIndex(selectedIndex)
     self:onListSelectionChanged()
 end
 
----Create a list group
-function GuidanceSteeringStrategyFrame:createGroupHeader(title)
-    local item = self.listCategoryTemplate:clone(self.list)
-    item:applyProfile("trackListItemGroup")
-    item:getDescendantByName("title"):setText(title)
-    item.doNotAlternate = true
-
-    return item
+---FS25 SmoothList data source: a single flat section of tracks.
+function GuidanceSteeringStrategyFrame:getNumberOfSections(list)
+    return 1
 end
 
----Create a list item
-function GuidanceSteeringStrategyFrame:createItem(title)
-    local item = self.listItemTemplate:clone(self.list)
-    item:applyProfile("trackListItem")
-    item:getDescendantByName("title"):setText(title)
+function GuidanceSteeringStrategyFrame:getNumberOfItemsInSection(list, section)
+    return #self.tracks
+end
 
-    return item
+---FS25 SmoothList data source: fill a (reused) cell for the given row. The cell's title
+---text child is named "title" in the frame XML; the track id is stashed on the cell so
+---getSelectedTrackId can read it back from the selected element.
+function GuidanceSteeringStrategyFrame:populateCellForItemInSection(list, section, index, cell)
+    local entry = self.tracks[index]
+    cell.trackId = entry ~= nil and entry.trackId or nil
+
+    local title = cell:getAttribute("title")
+    if title ~= nil then
+        title:setText(entry ~= nil and entry.name or "")
+    end
 end
 
 --- Get the frame's main content element's screen size.
@@ -201,9 +216,9 @@ function GuidanceSteeringStrategyFrame:onClickSelect(_, element)
 end
 
 function GuidanceSteeringStrategyFrame:onListSelectionChanged()
-    local element = self.rowToTrackId[self.list:getSelectedElement()]
-    if element ~= nil then
-        self:onDisplayElementsChanged(element)
+    local trackId = self:getSelectedTrackId()
+    if trackId ~= nil then
+        self:onDisplayElementsChanged({ trackId = trackId })
     end
 end
 
@@ -224,9 +239,8 @@ function GuidanceSteeringStrategyFrame:onClickCreateTrack()
 end
 
 function GuidanceSteeringStrategyFrame:onClickSaveTrack()
-    local element = self.rowToTrackId[self.list:getSelectedElement()]
-    if element ~= nil then
-        local trackId = element.trackId
+    local trackId = self:getSelectedTrackId()
+    if trackId ~= nil then
         local track = self.guidanceSteering:getTrack(trackId)
 
         if track ~= nil then
@@ -239,11 +253,9 @@ function GuidanceSteeringStrategyFrame:onClickSaveTrack()
 end
 
 function GuidanceSteeringStrategyFrame:onClickRemoveTrack()
-    local element = self.rowToTrackId[self.list:getSelectedElement()]
+    local trackId = self:getSelectedTrackId()
 
-    if element ~= nil then
-        local trackId = element.trackId
-
+    if trackId ~= nil then
         if trackId ~= 0 then
             self:deleteTrack(trackId)
 
@@ -425,10 +437,14 @@ function GuidanceSteeringStrategyFrame:loadStrategy(method)
 end
 
 function GuidanceSteeringStrategyFrame:setWarningMessage(message)
-    g_gui:showInfoDialog({
-        text = message,
-        okText = self.i18n:getText("button_ok")
-    })
+    -- FS25: g_gui:showInfoDialog(args-table) was replaced by the static InfoDialog.show
+    -- (text, callback, target, dialogType). Guarded so an unexpected API shape can't crash
+    -- the frame.
+    if InfoDialog ~= nil and InfoDialog.show ~= nil then
+        InfoDialog.show(message)
+    else
+        Logger.warning("GuidanceSteeringStrategyFrame: InfoDialog.show unavailable; message: " .. tostring(message))
+    end
 end
 
 function GuidanceSteeringStrategyFrame:onDisplayElementsChanged(element)

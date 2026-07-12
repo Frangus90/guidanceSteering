@@ -41,9 +41,21 @@ function GuidanceSteeringHUD:load()
     self:setVehicle(nil)
 end
 
+--- Gets the anchor position (top-right of our widget) relative to the speed meter.
+-- FS25 port: the FS22 HUD anchored to SpeedMeterDisplay.gearIcon, but in FS25 the
+-- gear icon is a plain overlay that is only positioned mid-draw and only when the
+-- vehicle actually has a gear display, so it is not a reliable anchor. The speed
+-- meter itself is an HUDElement anchored at the screen's bottom-right, so we offset
+-- from its position instead.
+function GuidanceSteeringHUD:getAnchorPosition()
+    local baseX, baseY = self.speedMeterDisplay:getPosition()
+    local offsetX, offsetY = self.speedMeterDisplay:scalePixelToScreenVector(GuidanceSteeringHUD.POSITION.ANCHOR)
+    return baseX + offsetX, baseY + offsetY
+end
+
 --- Create the elements for the HUD.
 function GuidanceSteeringHUD:createElements()
-    local topRightX, topRightY = self.speedMeterDisplay.gearIcon:getPosition()
+    local topRightX, topRightY = self:getAnchorPosition()
     local marginWidth, marginHeight = self.speedMeterDisplay:scalePixelToScreenVector(GuidanceSteeringHUD.SIZE.BOX_MARGIN)
     self:createBox(self.uiFilename, topRightX + marginWidth, topRightY + marginHeight)
 end
@@ -56,12 +68,17 @@ function GuidanceSteeringHUD:createBox(hudAtlasPath, x, y)
     local iconWidth, iconHeight = self.speedMeterDisplay:scalePixelToScreenVector(GuidanceSteeringHUD.SIZE.ICON)
     local iconPosX, iconPosY = self.speedMeterDisplay:scalePixelToScreenVector(GuidanceSteeringHUD.POSITION.ICON)
 
-    local boxOverlay = Overlay.new(g_baseHUDFilename, posX, y, boxWidth, boxHeight)
+    -- FS25 port: the FS22 HUD drew the box using the base game's gears-bar atlas
+    -- region (SpeedMeterDisplay.UV.GEARS_BAR) tinted with SpeedMeterDisplay.COLOR.GEARS_BG.
+    -- Both constant tables were removed in FS25's gauge redesign. Build the background
+    -- from the base "gui.gearBg" slice via g_overlayManager and tint it with our own
+    -- colour instead. (g_overlayManager:createOverlay returns nil + logs on an unknown
+    -- slice; "gui.gearBg" is a base-game slice used by SpeedMeterDisplay itself.)
+    local boxOverlay = g_overlayManager:createOverlay("gui.gearBg", posX, y, boxWidth, boxHeight)
     local boxElement = HUDElement.new(boxOverlay)
     self.stateBox = boxElement
 
-    self.stateBox:setUVs(GuiUtils.getUVs(SpeedMeterDisplay.UV.GEARS_BAR))
-    self.stateBox:setColor(unpack(SpeedMeterDisplay.COLOR.GEARS_BG))
+    self.stateBox:setColor(unpack(GuidanceSteeringHUD.COLOR.BOX_BG))
 
     self.stateBox:setVisible(true)
     self.speedMeterDisplay:addChild(boxElement)
@@ -155,7 +172,7 @@ function GuidanceSteeringHUD:drawText()
 
         self:drawLaneText()
 
-        local topRightX, topRightY = self.speedMeterDisplay.gearIcon:getPosition()
+        local topRightX, topRightY = self:getAnchorPosition()
         local marginWidth, marginHeight = self.speedMeterDisplay:scalePixelToScreenVector(GuidanceSteeringHUD.SIZE.BOX_MARGIN)
         self.stateBox:setPosition(topRightX + marginWidth, topRightY + marginHeight)
 
@@ -202,6 +219,10 @@ GuidanceSteeringHUD.UV = {
 GuidanceSteeringHUD.POSITION = {
     LANE_TEXT = { -22, -20 },
     ICON = { 5, 5 },
+    -- FS25 port: pixel offset from the speed meter's bottom-right anchor to the
+    -- top-right of our widget. Places the box above the speed gauge. Tune here if
+    -- it overlaps other HUD elements at a given resolution/UI scale.
+    ANCHOR = { -40, 245 },
 }
 
 GuidanceSteeringHUD.TEXT_COLOR = {
@@ -210,7 +231,9 @@ GuidanceSteeringHUD.TEXT_COLOR = {
 
 GuidanceSteeringHUD.COLOR = {
     INACTIVE = { 0.7, 0.7, 0.7, 0.3 },
-    ACTIVE = { 0.0003, 0.5647, 0.9822, 1 }
+    ACTIVE = { 0.0003, 0.5647, 0.9822, 1 },
+    -- FS25 port: box background tint (replaces the removed SpeedMeterDisplay.COLOR.GEARS_BG).
+    BOX_BG = { 0.018, 0.018, 0.018, 0.6 }
 }
 
 GuidanceSteeringHUD.TEXT_SIZE = {

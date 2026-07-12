@@ -1,65 +1,48 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!--
+    FS25 port of Guidance Steering's GUI profiles.
+
+    The FS22 version extended ~12 base-game profiles that GIANTS renamed or removed in
+    FS25's UI redesign. Re-parenting map (verified against GIANTS' own PrecisionFarming
+    and Courseplay FS25 GUI XMLs, and the FS25 dataS dump):
+
+      dialogBg                       -> fs25_dialogBg                (verified exists)
+      ingameMenuSettingsLayout       -> local gsLayout (extends emptyPanel; verified survivor)
+      settingsMenuSubtitle           -> fs25_settingsSectionHeader   (verified exists)
+      multiTextOptionBg/Left/Right/Text -> unchanged                 (verified survivors)
+      multiTextOptionTitle           -> local (unconfirmed base; self-contained text)
+      multiTextOptionSettings        -> local (removed base)
+      verticalListSliderRightDocked  -> fs25_listSliderBox           (verified exists)
+      verticalListSliderBar          -> fs25_listSlider              (verified exists)
+      ingameMenuWeather*Separator    -> fs25_lineSeparatorTop        (verified exists)
+      ingameMenuGameSettingsTextInput-> local (no FS25 reference; self-contained)
+      ingameMenuSettingsPauseButton  -> buttonBack                   (verified survivor)
+      list / listItem                -> local self-contained (SmoothList reads layout props)
+      framedEmptyPanel / wardrobeListFrame / settingsBox -> emptyPanel (verified survivor)
+      textDefault                    -> local gsTextBase (self-contained; avoids dependency)
+
+    Anything marked "local/self-contained" resolves without a base lookup so an unknown
+    base name can never leave an element unstyled-and-nil. Cosmetics may need in-game
+    tuning; correctness (element resolves, Lua controls bind) does not depend on it.
+
+    The old menu-shell profiles (paging buttons, tab list, page-tab, header selector
+    wrappers) were dropped. The FS25 menu shell (GuidanceSteeringMenu.xml) now uses the
+    base fs25_tabList* / fs25_buttonBox / fs25_fullScreenBackground profiles directly.
+-->
 <GUIProfiles>
     <Presets>
         <Preset name="colorTransparent" value="0 0 0 0" />
-
-        <Preset name="colorGlass" value="0.018 0.016 0.015 0.6" />
-        <Preset name="colorGlass_50" value="0.018 0.016 0.015 0.25" />
-
         <Preset name="colorGlassVeryLight" value="0.718 0.716 0.715 0.04" />
         <Preset name="colorGlassExtremelyLight" value="0.918 0.916 0.915 0.15" />
-        <Preset name="colorGlassMedium" value="0.118 0.116 0.115 0.20" />
-        <Preset name="colorGlassDark" value="0.018 0.016 0.015 0.65" />
         <Preset name="colorGlassLight" value="0.718 0.716 0.715 0.25" />
         <Preset name="colorGlassLight_50" value="0.718 0.716 0.715 0.0625" />
-        <Preset name="colorGlassLight_75" value="0.718 0.716 0.715 0.09375" />
 
         <Preset name="colorMainUI"    value="0.0227 0.5346 0.8519 1.0"/>
-        <Preset name="colorMainUIAlt" value="0.9900 0.4640 0.0010 1" />
-        <Preset name="colorDisabled" value="0.4 0.4 0.4 1" />
-
         <Preset name="colorWhite" value="1 1 1 1" />
-        <Preset name="colorWhite_50" value="1 1 1 0.5" />
-        <Preset name="colorWhite_25" value="1 1 1 0.25" />
-        <Preset name="colorRed" value="0.8069 0.0097 0.0097 1" />
-        <Preset name="colorDarkRed" value="0.2832 0.0091 0.0091 1" />
-        <Preset name="colorBlue" value="0.0742 0.4341 0.6939 1" />
-        <Preset name="colorGreen" value="0.0781 0.2233 0.0478 1" />
-        <Preset name="colorGreen2" value="0.2122 0.5271 0.0307 1" />
-
-        <Preset name="colorBlack" value="0 0 0 1" />
-        <Preset name="colorBlack2" value="0.0075 0.0075 0.0075 1" />
-        <Preset name="colorBlack3" value="0.013 0.013 0.013 1" />
-        <Preset name="colorBlack3_97" value="0.013 0.013 0.013 0.97" />
-        <Preset name="colorBlack3_70" value="0.013 0.013 0.013 0.7" />
-        <Preset name="colorBlack3_0" value="0.013 0.013 0.013 0" />
-
-        <Preset name="colorDarkGrey" value="0.0284 0.0284 0.0284 1" />
-        <Preset name="colorDarkGrey_0" value="0.0284 0.0284 0.0284 0" />
-        <Preset name="colorDarkGrey2" value="0.0630 0.0630 0.0630 1" />
-        <Preset name="colorDarkGrey2_50" value="0.0630 0.0630 0.0630 0.5" />
-        <Preset name="colorDarkGrey2_70" value="0.0630 0.0630 0.0630 0.7" />
-        <Preset name="colorDarkGrey3" value="0.0194 0.0194 0.0194 1" />
-        <Preset name="colorDarkGrey4" value="0.0723 0.0723 0.0723 1" />
-        <Preset name="colorDarkGrey5" value="0.1356 0.1356 0.1356 1" />
-        <Preset name="colorDarkGrey6" value="0.03 0.03 0.03 1" />
-        <Preset name="colorDarkGrey7" value="0.0212 0.0212 0.0212 1" />
-
         <Preset name="colorListRowBackground" value="$preset_colorGlassLight_50" />
-
-        <Preset name="colorLightGrey" value="0.0482 0.0482 0.0482 1" />
-        <Preset name="colorDescriptionText" value="0.2918 0.2918 0.2918 1" />
-        <Preset name="colorDescriptionText2" value="0.6 0.6 0.6 1" />
-        <Preset name="colorDescriptionText3" value="0.1845 0.1845 0.1845 1" />
-        <Preset name="colorDescriptionText4" value="0.6307 0.6307 0.6307 1" />
-        <!-- UVs -->
-        <Preset name="colorUVs" value="10px 1010px 4px 4px" />
     </Presets>
 
     <Traits>
-        <Trait name="debugging">
-            <Value name="debugEnabled" value="true" />
-        </Trait>
         <Trait name="anchorTopLeft">
             <Value name="screenAlign" value="topLeft" />
             <Value name="positionOrigin" value="topLeft" />
@@ -68,81 +51,93 @@
             <Value name="screenAlign" value="topCenter" />
             <Value name="positionOrigin" value="topCenter" />
         </Trait>
+        <!-- Local replacement for the base "alternateRow" trait (fate unconfirmed in FS25). -->
+        <Trait name="gsAlternateRow">
+            <Value name="imageColor" value="$preset_colorGlassExtremelyLight" />
+        </Trait>
     </Traits>
 
-    <Profile name="guidanceSteeringDialogBg" extends="dialogBg">
+    <!-- ============================================================= -->
+    <!-- Self-contained base building blocks (no dependency on removed base profiles) -->
+    <!-- ============================================================= -->
+
+    <Profile name="gsTextBase">
+        <Value name="type" value="text" />
+        <Value name="textSize" value="16px" />
+        <Value name="textColor" value="$preset_colorWhite" />
+        <Value name="textVerticalAlignment" value="middle" />
+        <Value name="textAlignment" value="left" />
+    </Profile>
+
+    <Profile name="gsLayout" extends="emptyPanel">
+        <Value name="flowDirection" value="vertical" />
+    </Profile>
+
+    <Profile name="gsPanel" extends="emptyPanel" />
+
+    <!-- ============================================================= -->
+    <!-- Dialog backgrounds -->
+    <!-- ============================================================= -->
+
+    <Profile name="guidanceSteeringDialogBg" extends="fs25_dialogBg">
         <Value name="size" value="1280px 720px" />
     </Profile>
 
-    <Profile name="guidanceSteeringDialogBgWide" extends="dialogBg">
+    <Profile name="guidanceSteeringDialogBgWide" extends="fs25_dialogBg">
         <Value name="size" value="1280px 758px" />
     </Profile>
 
-    <Profile name="guidanceSteeringMenuHeader" extends="emptyPanel" with="anchorTopCenter">
-        <Value name="size" value="1280px 112px" />
-        <Value name="alignmentX" value="left" />
-        <Value name="alignmentY" value="bottom" />
-        <Value name="imageColor" value="$preset_colorGlassVeryLight" />
-        <Value name="flowDirection" value="horizontal" />
-        <Value name="wrapAround" value="true" />
-        <Value name="lateralFlowSize" value="112px" />
-        <Value name="fitToElements" value="true" />
-        <Value name="autoValidateLayout" value="true" />
-        <Value name="hasFrame" value="false" />
+    <!-- ============================================================= -->
+    <!-- Settings container / layout (replaces settingsBox, ingameMenuSettingsBox, ingameMenuSettingsLayout) -->
+    <!-- ============================================================= -->
+
+    <Profile name="settingsBox" extends="emptyPanel">
+        <Value name="size" value="1280px 600px" />
     </Profile>
 
-    <Profile name="guidanceSteeringMenuHeaderWide" extends="guidanceSteeringMenuHeader">
-        <Value name="size" value="1280px 150px" />
-        <Value name="lateralFlowSize" value="150px" />
+    <Profile name="ingameMenuSettingsBox" extends="emptyPanel" />
+
+    <Profile name="ingameMenuSettingsLayout" extends="emptyPanel">
+        <Value name="flowDirection" value="vertical" />
     </Profile>
 
-    <Profile name="guidanceSteeringHeaderSelector" extends="uiInGameMenuHeaderSelector">
-        <Value name="size" value="1280px 112px" />
+    <Profile name="ingameMenuGameSettingsTextInputWrapper" extends="emptyPanel" />
+
+    <Profile name="wardrobeListFrame" extends="emptyPanel" />
+    <Profile name="framedEmptyPanel" extends="emptyPanel" />
+
+    <!-- Section subtitle (was settingsMenuSubtitle) -->
+    <Profile name="settingsMenuSubtitle" extends="fs25_settingsSectionHeader" />
+
+    <!-- ============================================================= -->
+    <!-- Separators (were ingameMenuWeather*Separator) -->
+    <!-- ============================================================= -->
+
+    <Profile name="ingameMenuWeatherVerticalSeparator" extends="fs25_lineSeparatorTop" />
+    <Profile name="ingameMenuWeatherHorizontalSeparator" extends="fs25_lineSeparatorTop" />
+
+    <!-- ============================================================= -->
+    <!-- Sliders (were verticalListSliderRightDocked / verticalListSliderBar) -->
+    <!-- ============================================================= -->
+
+    <Profile name="verticalListSliderRightDocked" extends="fs25_listSliderBox" />
+    <Profile name="verticalListSliderBar" extends="fs25_listSlider" />
+
+    <!-- ============================================================= -->
+    <!-- multiTextOption option-title (unconfirmed base multiTextOptionTitle) -->
+    <!-- ============================================================= -->
+
+    <Profile name="multiTextOptionTitle" extends="gsTextBase">
+        <Value name="textSize" value="15px" />
+        <Value name="textColor" value="$preset_colorWhite" />
+        <Value name="textMaxWidth" value="250px" />
     </Profile>
 
-    <Profile name="guidanceSteeringHeaderSelectorWide" extends="uiInGameMenuHeaderSelector">
-        <Value name="size" value="960px 112px" />
-    </Profile>
+    <!-- ============================================================= -->
+    <!-- Text -->
+    <!-- ============================================================= -->
 
-    <Profile name="guidanceSteeringPagingButtonLeft" extends="uiInGameMenuPagingButtonLeft">
-    </Profile>
-
-    <Profile name="guidanceSteeringPagingButtonRight" extends="uiInGameMenuPagingButtonRight">
-    </Profile>
-
-    <Profile name="guidanceSteeringTabButton" extends="uiTabbedMenuPageTabButton">
-    </Profile>
-
-    <Profile name="guidanceSteeringMenuPageTab" extends="listItem">
-        <Value name="size" value="100px 100px" />
-        <Value name="margin" value="0px 0px 0px 0px" />
-        <Value name="position" value="0px 0px" />
-    </Profile>
-
-    <Profile name="guidanceSteeringMenuPageTabAlternate" extends="guidanceSteeringMenuPageTab" with="alternateRow" />
-
-    <Profile name="guidanceSteeringPagingTabList" extends="list" with="anchorTopLeft">
-        <Value name="size" value="1280px 112px" />
-        <Value name="position" value="0px 0px" />
-        <Value name="itemsPerRow" value="6" />
-        <Value name="listItemHeight" value="112px" />
-        <Value name="listItemWidth" value="100px" />
-        <Value name="listItemPadding" value="0px" />
-        <Value name="listItemSpacing" value="0px" />
-        <Value name="fixedHeight" value="false" />
-        <Value name="fixedWidth" value="false" />
-        <Value name="margin" value="0px 0px 0px 0px" />
-        <Value name="rowBackgroundProfile" value="guidanceSteeringMenuPageTab" />
-        <Value name="rowBackgroundProfileAlternate" value="guidanceSteeringMenuPageTabAlternate" />
-    </Profile>
-
-    <Profile name="guidanceSteeringPagingTabListWide" extends="guidanceSteeringPagingTabList">
-        <Value name="size" value="1280px 150px" />
-        <Value name="listItemHeight" value="150px" />
-        <Value name="listItemWidth" value="132px" />
-    </Profile>
-
-    <Profile name="detailText" extends="textDefault">
+    <Profile name="detailText" extends="gsTextBase">
         <Value name="textSize" value="28px" />
         <Value name="textColor" value="$preset_colorMainUI" />
         <Value name="size" value="250px 24px" />
@@ -152,7 +147,11 @@
         <Value name="textVerticalAlignment" value="middle" />
     </Profile>
 
-    <Profile name="guidanceButton" extends="ingameMenuSettingsPauseButton">
+    <!-- ============================================================= -->
+    <!-- Buttons (guidanceButton was ingameMenuSettingsPauseButton) -->
+    <!-- ============================================================= -->
+
+    <Profile name="guidanceButton" extends="buttonBack">
         <Value name="screenAlign" value="bottomLeft" />
         <Value name="positionOrigin" value="bottomLeft" />
         <Value name="margin" value="15px 15px 15px 15px" />
@@ -174,61 +173,6 @@
         <Value name="textVerticalAlignment" value="middle" />
     </Profile>
 
-    <Profile name="guidanceSettingsTextInput" extends="ingameMenuGameSettingsTextInput">
-        <Value name="margin" value="35px 42px 35px 16px" />
-    </Profile>
-
-    <Profile name="guidanceSettingsButton" extends="guidanceButton">
-        <Value name="margin" value="35px 15px 35px 15px" />
-    </Profile>
-    <Profile name="guidanceSettingsMultiTextOptionSettings" extends="guidanceButton">
-        <Value name="margin" value="35px 42px 35px 16px" />
-    </Profile>
-
-    <Profile name="guidanceHeadlandMultiTextOptionSettings" extends="multiTextOptionSettings">
-        <Value name="margin" value="35px 42px 35px 16px" />
-    </Profile>
-
-    <Profile name="guidanceMultiTextOptionSettings" extends="multiTextOptionSettings">
-        <Value name="size" value="250px 48px" />
-        <Value name="margin" value="15px 42px 15px 16px" />
-    </Profile>
-
-    <Profile name="guidanceMultiTextOptionSettingsWide" extends="multiTextOptionSettings">
-        <Value name="size" value="250px 48px" />
-        <Value name="margin" value="35px 42px 35px 16px" />
-    </Profile>
-
-    <Profile name="guidanceMultiTextOptionBg" extends="multiTextOptionBg">
-        <Value name="size" value="155px 48px" />
-    </Profile>
-
-    <Profile name="guidanceMultiTextOptionText" extends="multiTextOptionText">
-        <Value name="textMaxWidth" value="100px" />
-    </Profile>
-
-    <Profile name="guidanceMultiTextOptionTitle" extends="multiTextOptionTitle">
-        <Value name="textMaxWidth" value="250px" />
-    </Profile>
-
-    <Profile name="guidanceSettingsLayoutLeft" extends="ingameMenuSettingsLayout">
-        <Value name="hasFrame" value="true" />
-        <Value name="frameThickness" value="1dp 1dp 0dp 1dp" />
-        <Value name="frameLeftColor" value="$preset_colorGlassLight" />
-        <Value name="frameRightColor" value="$preset_colorGlassLight" />
-        <Value name="frameTopColor" value="$preset_colorGlassLight" />
-        <Value name="frameBottomColor" value="$preset_colorGlassLight" />
-    </Profile>
-
-    <Profile name="guidanceSettingsLayoutRight" extends="ingameMenuSettingsLayout">
-        <Value name="hasFrame" value="true" />
-        <Value name="frameThickness" value="1dp 1dp 1dp 1dp" />
-        <Value name="frameLeftColor" value="$preset_colorGlassLight" />
-        <Value name="frameRightColor" value="$preset_colorGlassLight" />
-        <Value name="frameTopColor" value="$preset_colorGlassLight" />
-        <Value name="frameBottomColor" value="$preset_colorGlassLight" />
-    </Profile>
-
     <Profile name="guidanceButtonDetailLeft" extends="guidanceButtonDetail">
         <Value name="margin" value="40px 15px 40px 15px" />
         <Value name="textOffset" value="-5px 0px" />
@@ -245,28 +189,95 @@
         <Value name="iconTextOffset" value="10px 0px" />
     </Profile>
 
-    <Profile name="guidanceButtonSmallLeft" extends="guidanceButton">
-        <Value name="size" value="156px 45px" />
-        <Value name="margin" value="30px 12.5px 2px 12.5px" />
+    <Profile name="guidanceSettingsButton" extends="guidanceButton">
+        <Value name="margin" value="35px 15px 35px 15px" />
     </Profile>
 
-    <Profile name="guidanceButtonSmallRight" extends="guidanceButton">
-        <Value name="size" value="156px 45px" />
-        <Value name="margin" value="2px 12.5px 30px 12.5px" />
+    <!-- ============================================================= -->
+    <!-- Text input (was ingameMenuGameSettingsTextInput; no FS25 reference: self-contained) -->
+    <!-- ============================================================= -->
+
+    <Profile name="guidanceSettingsTextInput">
+        <Value name="type" value="textInput" />
+        <Value name="size" value="250px 48px" />
+        <Value name="textSize" value="16px" />
+        <Value name="textColor" value="$preset_colorWhite" />
+        <Value name="textColorSelected" value="$preset_colorMainUI" />
+        <Value name="textVerticalAlignment" value="middle" />
+        <Value name="textAlignment" value="left" />
+        <Value name="textOffset" value="10px 0px" />
+        <Value name="imageColor" value="$preset_colorGlassLight_50" />
+        <Value name="imageFocusedColor" value="$preset_colorGlassLight" />
+        <Value name="margin" value="35px 42px 35px 16px" />
     </Profile>
+
+    <!-- ============================================================= -->
+    <!-- multiTextOption wrappers (was multiTextOptionSettings) -->
+    <!-- ============================================================= -->
+
+    <Profile name="guidanceMultiTextOptionSettings" extends="guidanceButton">
+        <Value name="size" value="250px 48px" />
+        <Value name="margin" value="15px 42px 15px 16px" />
+    </Profile>
+
+    <Profile name="guidanceSettingsMultiTextOptionSettings" extends="guidanceButton">
+        <Value name="margin" value="35px 42px 35px 16px" />
+    </Profile>
+
+    <Profile name="guidanceHeadlandMultiTextOptionSettings" extends="guidanceButton">
+        <Value name="margin" value="35px 42px 35px 16px" />
+    </Profile>
+
+    <Profile name="guidanceMultiTextOptionBg" extends="multiTextOptionBg">
+        <Value name="size" value="155px 48px" />
+    </Profile>
+
+    <Profile name="guidanceMultiTextOptionText" extends="multiTextOptionText">
+        <Value name="textMaxWidth" value="100px" />
+    </Profile>
+
+    <Profile name="guidanceMultiTextOptionTitle" extends="multiTextOptionTitle">
+        <Value name="textMaxWidth" value="250px" />
+    </Profile>
+
+    <!-- ============================================================= -->
+    <!-- Image cell background (was baseReference; survives) -->
+    <!-- ============================================================= -->
 
     <Profile name="cellImageBackground" extends="baseReference">
         <Value name="size" value="200px 200px" />
         <Value name="margin" value="25px 25px 25px 25px" />
     </Profile>
 
-    <!-- list -->
-    <Profile name="guidanceSteeringTracksListBox" extends="framedEmptyPanel" with="anchorTopLeft">
+    <!-- ============================================================= -->
+    <!-- Tooltip / help row (was ingameMenuHelpRow*) -->
+    <!-- ============================================================= -->
+
+    <Profile name="ingameMenuHelpRowBg" extends="emptyPanel">
+        <Value name="size" value="600px 60px" />
+        <Value name="imageColor" value="$preset_colorGlassLight_50" />
+    </Profile>
+
+    <Profile name="ingameMenuHelpRowIcon" extends="emptyPanel">
+        <Value name="size" value="40px 40px" />
+    </Profile>
+
+    <Profile name="ingameMenuHelpRowText" extends="gsTextBase">
+        <Value name="size" value="540px 60px" />
+        <Value name="textSize" value="15px" />
+        <Value name="textMaxWidth" value="540px" />
+    </Profile>
+
+    <!-- ============================================================= -->
+    <!-- Track list (FS25 SmoothList: standalone layout profile, no removed base) -->
+    <!-- ============================================================= -->
+
+    <Profile name="guidanceSteeringTracksListBox" extends="emptyPanel" with="anchorTopLeft">
         <Value name="position" value="0px 0px" />
         <Value name="size" value="454px 500px" />
     </Profile>
 
-    <Profile name="trackList" extends="list" with="anchorTopLeft">
+    <Profile name="trackList" extends="emptyPanel" with="anchorTopLeft">
         <Value name="size" value="425px 500px" />
         <Value name="selectOnScroll" value="true" />
         <Value name="isHorizontalList" value="false" />
@@ -277,16 +288,17 @@
         <Value name="rowBackgroundProfileAlternate" value="trackListItemAlternate" />
     </Profile>
 
-    <Profile name="trackListItem" extends="listItem">
+    <Profile name="trackListItem">
+        <Value name="type" value="listItem" />
         <Value name="imageColor" value="$preset_colorListRowBackground" />
         <Value name="imageFocusedColor" value="$preset_colorMainUI" />
         <Value name="imageSelectedColor" value="$preset_colorMainUI" />
         <Value name="size" value="400px 46.86px" />
         <Value name="position" value="0px 0px" />
     </Profile>
-    <Profile name="trackListItemAlternate" extends="trackListItem" with="alternateRow" />
+    <Profile name="trackListItemAlternate" extends="trackListItem" with="gsAlternateRow" />
 
-    <Profile name="trackListItemTitle" extends="textDefault">
+    <Profile name="trackListItemTitle" extends="gsTextBase">
         <Value name="size" value="400px 46px" />
         <Value name="textMaxWidth" value="400px" />
         <Value name="textVerticalAlignment" value="middle" />

@@ -25,6 +25,8 @@ function GuidanceSteeringUI:new(mission, i18n, modDirectory, gui, inputManager, 
 
     self.uiFilename = Utils.getFilename("resources/guidanceSteering_1080p.png", modDirectory)
 
+    -- FS25 port (Phase 3): the HUD is ported. Create it unconditionally; its
+    -- SpeedMeterDisplay.storeScaledValues/draw hooks are FS25-compatible.
     self.hud = GuidanceSteeringHUD:new(mission, mission.hud.speedMeter, i18n, self.uiFilename)
 
     self.vehicle = nil
@@ -34,7 +36,9 @@ end
 
 function GuidanceSteeringUI:delete()
     if self.isClient then
-        self.hud:delete()
+        if self.hud ~= nil then
+            self.hud:delete()
+        end
 
         self:unloadMenu()
     end
@@ -42,9 +46,16 @@ end
 
 function GuidanceSteeringUI:load()
     if self.isClient then
-        self.gui:loadProfiles(Utils.getFilename("resources/gui/guiProfiles.xml", self.modDirectory))
-
+        -- FS25 port (Phase 3): the HUD is ported; load it. The settings menu is
+        -- still Phase 4 -- skip guiProfiles + menu loading while PHASE1_NO_UI is set
+        -- (the FS22 guiProfiles.xml extends base profiles that were renamed in FS25).
         self.hud:load()
+
+        if GuidanceSteering.PHASE1_NO_UI then
+            return
+        end
+
+        self.gui:loadProfiles(Utils.getFilename("resources/gui/guiProfiles.xml", self.modDirectory))
 
         self:loadMenu()
     end
@@ -70,6 +81,15 @@ end
 
 ---Action event to toggle the menu.
 function GuidanceSteeringUI:onToggleUI()
+    -- FS25 port: the menu isn't ported yet (Phase 4). Inform the user instead of opening it.
+    if GuidanceSteering.PHASE1_NO_UI then
+        Logger.info("GS_SHOW_UI: menu UI is not yet available in the FS25 port.")
+        if g_currentMission ~= nil then
+            g_currentMission:showBlinkingWarning("Guidance Steering: menu not yet available in FS25 port", 2000)
+        end
+        return
+    end
+
     if not self.mission.isSynchronizingWithPlayers then
         self.gui:showGui("GuidanceSteeringMenu")
     end
@@ -78,7 +98,10 @@ end
 ---Set the current vehicle on the UI.
 function GuidanceSteeringUI:setVehicle(vehicle)
     self.vehicle = vehicle
-    self.hud:setVehicle(vehicle)
+
+    if self.hud ~= nil then
+        self.hud:setVehicle(vehicle)
+    end
 end
 
 ---Get the current vehicle.

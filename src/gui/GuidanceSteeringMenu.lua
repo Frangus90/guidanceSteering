@@ -19,11 +19,18 @@ GuidanceSteeringMenu.CONTROLS = {
 ---Creates a new instance of the GuidanceSteeringMenu.
 ---@return GuidanceSteeringMenu
 function GuidanceSteeringMenu.new(messageCenter, i18n, inputManager)
-    local self = TabbedMenu.new(nil, GuidanceSteeringMenu_mt, messageCenter, i18n, inputManager)
+    -- FS25: TabbedMenu.new(target, custom_mt) dropped its FS22 service arguments
+    -- (messageCenter/i18n/inputManager). The base no longer stores them, so we assign
+    -- them ourselves here (same pattern as Courseplay's CpInGameMenu). self.l10n is
+    -- required by the inherited setupMenuButtonInfo/menu-button plumbing.
+    local self = TabbedMenu.new(nil, GuidanceSteeringMenu_mt)
 
     self:registerControls(GuidanceSteeringMenu.CONTROLS)
 
+    self.messageCenter = messageCenter
     self.i18n = i18n
+    self.l10n = i18n
+    self.inputManager = inputManager
     self.performBackgroundBlur = false
 
     return self
@@ -44,17 +51,24 @@ end
 function GuidanceSteeringMenu:setupPages()
     local alwaysVisiblePredicate = self:makeIsAlwaysVisiblePredicate()
 
+    -- FS25: g_iconsUIFilename (the base-game icon atlas the settings tab borrowed) may be
+    -- unavailable; fall back to our own atlas so the tab always has a valid texture.
+    local gsFilename = g_currentMission.guidanceSteering.ui.uiFilename
+    local settingsIconFilename = g_iconsUIFilename or gsFilename
+
     local orderedPages = {
-        { self.pageSettings, alwaysVisiblePredicate, g_iconsUIFilename, GuidanceSteeringMenu.TAB_UV.SETTINGS },
-        { self.pageStrategy, alwaysVisiblePredicate, g_currentMission.guidanceSteering.ui.uiFilename, GuidanceSteeringMenu.TAB_UV.STRATEGY },
+        { self.pageSettings, alwaysVisiblePredicate, settingsIconFilename, GuidanceSteeringMenu.TAB_UV.SETTINGS },
+        { self.pageStrategy, alwaysVisiblePredicate, gsFilename, GuidanceSteeringMenu.TAB_UV.STRATEGY },
     }
 
     for i, pageDef in ipairs(orderedPages) do
         local page, predicate, uiFilename, iconUVs = unpack(pageDef)
         self:registerPage(page, i, predicate)
 
+        -- FS25 addPageTab(frameController, iconFilename, iconUVs, iconSliceId, soundId):
+        -- passing filename + UVs (sliceId nil) is still supported by the base game.
         local normalizedUVs = GuiUtils.getUVs(iconUVs)
-        self:addPageTab(page, uiFilename, normalizedUVs) -- use the global here because the value changes with resolution settings
+        self:addPageTab(page, uiFilename, normalizedUVs)
     end
 end
 

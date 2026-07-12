@@ -61,8 +61,10 @@
         <GuiElement type="bitmap" profile="ingameMenuWeatherVerticalSeparator" position="210px -50px" size="2dp 400px"/>
 
         <GuiElement type="empty" profile="wardrobeListFrame" size="400px 500px" position="455px 0px" id="trackListBox">
-            <GuiElement type="list" size="454px 500px" profile="trackList" id="list" onSelectionChanged="onListSelectionChanged" onClick="onClickSelect" onDoubleClick="onClickSelect" focusInit="onOpen" listSectionHeader="section" showHighlights="true">
-                <GuiElement type="listItem" profile="trackListItem" id="listItemTemplate">
+            <!-- FS25: SmoothList (data-source driven). The ListItem below is the reusable
+                 cell prototype; its "title" text is filled by populateCellForItemInSection. -->
+            <GuiElement type="list" size="454px 500px" profile="trackList" id="list" onSelectionChanged="onListSelectionChanged" onClick="onClickSelect" onDoubleClick="onClickSelect" focusInit="onOpen" showHighlights="true">
+                <GuiElement type="listItem" profile="trackListItem">
                     <GuiElement type="text" profile="trackListItemTitle" name="title"/>
                 </GuiElement>
             </GuiElement>

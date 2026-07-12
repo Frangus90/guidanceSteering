@@ -12,6 +12,12 @@ GuidanceSteering.MAX_NUM_TRACKS = 2 ^ GuidanceSteering.SEND_NUM_BITS
 
 GuidanceSteering.GROUND_CLEARANCE_OFFSET = .25
 
+-- FS25 port: master switch for the ported GUI menu (Phase 4). The HUD (Phase 3) is
+-- always created; this flag only gates loading the guiProfiles + tabbed settings menu.
+-- Set to false now that the menu is ported. Kept as a one-line kill switch: flip back to
+-- true if the menu regresses in-game and core AB-line steering (keybinds) must keep working.
+GuidanceSteering.PHASE1_NO_UI = false
+
 local GuidanceSteering_mt = Class(GuidanceSteering)
 
 function GuidanceSteering:new(mission, modDirectory, modName, i18n, gui, inputManager, messageCenter)
@@ -33,7 +39,12 @@ function GuidanceSteering:new(mission, modDirectory, modName, i18n, gui, inputMa
 
     self.ui = GuidanceSteeringUI:new(mission, i18n, modDirectory, gui, inputManager, messageCenter)
 
-    self.showGuidanceLines = false
+    -- Default ON so a new savegame renders the guidance line/track immediately. New games
+    -- never run onMissionLoadFromSavegame (no save file yet), which is the only other place
+    -- this was set (with default true) -- leaving it false here made a freshly created AB
+    -- track invisible (onDraw is gated on isShowGuidanceLinesEnabled), so dropping point B
+    -- appeared to do nothing. Toggle remains available via Alt+L.
+    self.showGuidanceLines = true
     self.showGuidanceLinesAsDots = false
     self.guidanceTerrainAngleIsActive = true
     self.lineOffset = GuidanceSteering.GROUND_CLEARANCE_OFFSET
@@ -345,8 +356,11 @@ end
 ---Set the current vehicle for the GS GUI.
 function GuidanceSteering:onEnterVehicle()
     if self:getIsClient() then
-        local vehicle = self.controlledVehicle
-        local spec = vehicle.spec_globalPositioningSystem
+        -- FS25: g_currentMission.controlledVehicle was removed; use g_localPlayer:getCurrentVehicle().
+        -- Note: BaseMission.onEnterVehicle no longer exists in FS25, so this hook does not
+        -- currently fire (rewiring to the spec-level onEnterVehicle event is a later UI phase).
+        local vehicle = g_localPlayer ~= nil and g_localPlayer:getCurrentVehicle() or nil
+        local spec = vehicle ~= nil and vehicle.spec_globalPositioningSystem or nil
         local hasGuidanceSystem = spec ~= nil and spec.hasGuidanceSystem
         local gui = g_currentMission.guidanceSteering.ui
 
@@ -381,7 +395,7 @@ end
 function GuidanceSteering.actionEventAccelerate(vehicle, superFunc, actionName, inputValue, ...)
     local spec = vehicle.spec_globalPositioningSystem
     if spec ~= nil and vehicle:getHasGuidanceSystem() and spec.guidanceSteeringIsActive and vehicle.getShuttleDriveDirection == nil then
-        spec.axisAccelerate = MathUtil.clamp(inputValue, 0, 1)
+        spec.axisAccelerate = math.clamp(inputValue, 0, 1)
     end
 
     superFunc(vehicle, actionName, inputValue, ...)
@@ -390,7 +404,7 @@ end
 function GuidanceSteering.actionEventBrake(vehicle, superFunc, actionName, inputValue, ...)
     local spec = vehicle.spec_globalPositioningSystem
     if spec ~= nil and vehicle:getHasGuidanceSystem() and spec.guidanceSteeringIsActive and vehicle.getShuttleDriveDirection == nil then
-        spec.axisBrake = MathUtil.clamp(inputValue, 0, 1)
+        spec.axisBrake = math.clamp(inputValue, 0, 1)
     end
 
     superFunc(vehicle, actionName, inputValue, ...)

@@ -34,7 +34,12 @@ function GlobalPositioningSystem.initSpecialization(vehicleType)
     schema:register(XMLValueType.NODE_INDEX, "vehicle.guidanceSteering#node", "GuidanceSteering rootNode")
     schema:setXMLSpecializationType()
 
-    g_configurationManager:addConfigurationType(GlobalPositioningSystem.CONFIG_NAME, g_i18n:getText("configuration_buyableGPS"), "globalPositioningSystem", nil, nil, nil, ConfigurationUtil.SELECTOR_MULTIOPTION)
+    -- FS25: config types are registered on g_vehicleConfigurationManager with a
+    -- VehicleConfigurationItem class (was g_configurationManager + SELECTOR arg in FS22).
+    -- The shop entries themselves are injected in loader.lua's addGPSConfigurationUtil.
+    if g_vehicleConfigurationManager.configurations[GlobalPositioningSystem.CONFIG_NAME] == nil then
+        g_vehicleConfigurationManager:addConfigurationType(GlobalPositioningSystem.CONFIG_NAME, g_i18n:getText("configuration_buyableGPS"), "globalPositioningSystem", VehicleConfigurationItem)
+    end
     ObjectChangeUtil.registerObjectChangeXMLPaths(schema, "vehicle.globalPositioningSystemConfigurations.globalPositioningSystemConfiguration(?)")
 
     local schemaSavegame = Vehicle.xmlSchemaSavegame
@@ -78,9 +83,37 @@ function GlobalPositioningSystem.registerEventListeners(vehicleType)
     SpecializationUtil.registerEventListener(vehicleType, "onUpdateTick", GlobalPositioningSystem)
     SpecializationUtil.registerEventListener(vehicleType, "onDraw", GlobalPositioningSystem)
     SpecializationUtil.registerEventListener(vehicleType, "onPostAttachImplement", GlobalPositioningSystem)
+    -- FS25 port: the FS22 wiring routed the current vehicle to the GS UI/HUD through
+    -- BaseMission.onEnterVehicle, which no longer exists in FS25. Use the spec-level
+    -- enter/leave events instead (verified fired by Enterable in FS25; same pattern as
+    -- Courseplay's CpHud). This is what feeds ui:getVehicle() for the menu and the HUD.
+    SpecializationUtil.registerEventListener(vehicleType, "onEnterVehicle", GlobalPositioningSystem)
+    SpecializationUtil.registerEventListener(vehicleType, "onLeaveVehicle", GlobalPositioningSystem)
 end
 
 function GlobalPositioningSystem.registerEvents(vehicleType)
+end
+
+---FS25: route the controlled vehicle to the GS UI (menu + HUD) on enter.
+function GlobalPositioningSystem:onEnterVehicle(isControlling)
+    if self.isClient and isControlling then
+        local guidanceSteering = g_currentMission ~= nil and g_currentMission.guidanceSteering or nil
+        if guidanceSteering ~= nil and guidanceSteering.ui ~= nil then
+            local spec = self.spec_globalPositioningSystem
+            local hasGuidanceSystem = spec ~= nil and spec.hasGuidanceSystem
+            guidanceSteering.ui:setVehicle(hasGuidanceSystem and self or nil)
+        end
+    end
+end
+
+---FS25: clear the vehicle from the GS UI on leave.
+function GlobalPositioningSystem:onLeaveVehicle(wasEntered)
+    if self.isClient then
+        local guidanceSteering = g_currentMission ~= nil and g_currentMission.guidanceSteering or nil
+        if guidanceSteering ~= nil and guidanceSteering.ui ~= nil then
+            guidanceSteering.ui:setVehicle(nil)
+        end
+    end
 end
 
 function GlobalPositioningSystem:onRegisterActionEvents(isActiveForInput, isActiveForInputIgnoreSelection)
@@ -457,7 +490,7 @@ function GlobalPositioningSystem.updateDelayedNetworkInputs(self, dt)
         if spec.shiftControl.changeCurrentDelay < 0 then
             spec.shiftControl.changeCurrentDelay = spec.shiftControl.changeDelay
 
-            local dir = MathUtil.sign(lastShiftParallelValue)
+            local dir = math.sign(lastShiftParallelValue)
             GlobalPositioningSystem.shiftTrackParallel(data, dt, dir)
 
             spec.shiftControl.forceFinalPush = true
@@ -481,7 +514,7 @@ function GlobalPositioningSystem.updateDelayedNetworkInputs(self, dt)
         if spec.widthControl.changeCurrentDelay < 0 then
             spec.widthControl.changeCurrentDelay = spec.widthControl.changeDelay
 
-            local dir = MathUtil.sign(lastWidthValue)
+            local dir = math.sign(lastWidthValue)
             local width = data.width + (spec.lastInputValues.widthIncrement * dir)
 
             data.width = width
@@ -512,7 +545,7 @@ function GlobalPositioningSystem:onUpdate(dt)
             if hasGuidanceSystem then
                 local guidanceSteeringIsActive = spec.lastInputValues.guidanceSteeringIsActive
                 if guidanceSteeringIsActive and self:getIsActiveForInput(true, true) then
-                    spec.axisForward = MathUtil.clamp((spec.axisAccelerate - spec.axisBrake), -1, 1)
+                    spec.axisForward = math.clamp((spec.axisAccelerate - spec.axisBrake), -1, 1)
                 else
                     spec.axisForward = 0
                 end
@@ -570,7 +603,7 @@ function GlobalPositioningSystem:onUpdate(dt)
         local dirX, _, dirZ = localDirectionToWorld(guidanceNode, worldDirectionToLocal(guidanceNode, lineDirX, 0, lineDirZ))
         --                local dirX, dirZ = lineDirX, lineDirZ
 
-        local dot = MathUtil.clamp(driveDirX * dirX + driveDirZ * dirZ, GlobalPositioningSystem.DIRECTION_LEFT, GlobalPositioningSystem.DIRECTION_RIGHT) -- dot towards point
+        local dot = math.clamp(driveDirX * dirX + driveDirZ * dirZ, GlobalPositioningSystem.DIRECTION_LEFT, GlobalPositioningSystem.DIRECTION_RIGHT) -- dot towards point
         local angle = math.acos(dot)
 
         local snapDirectionMultiplier = 1
@@ -975,7 +1008,8 @@ function GlobalPositioningSystem.rotateTrack(self, data)
 end
 
 function GlobalPositioningSystem.updateSounds(self, spec, dt)
-    if self == g_currentMission.controlledVehicle then
+    -- FS25: g_currentMission.controlledVehicle was removed; use g_localPlayer:getCurrentVehicle().
+    if self == g_localPlayer:getCurrentVehicle() then
         if spec.playHeadLandWarning then
             if not spec.isHeadlandWarningSamplePlaying then
                 g_soundManager:playSample(spec.samples.warning)
@@ -1023,7 +1057,8 @@ function GlobalPositioningSystem.actionEventOnToggleUI(self, actionName, inputVa
         return
     end
 
-    if self:getHasGuidanceSystem() and self == g_currentMission.controlledVehicle then
+    -- FS25: g_currentMission.controlledVehicle was removed; use g_localPlayer:getCurrentVehicle().
+    if self:getHasGuidanceSystem() and self == g_localPlayer:getCurrentVehicle() then
         g_currentMission.guidanceSteering.ui:onToggleUI()
     end
 end
@@ -1101,6 +1136,16 @@ function GlobalPositioningSystem.actionEventEnableSteering(self, actionName, inp
 
     if not spec.guidanceData.isCreated then
         g_currentMission:showBlinkingWarning(g_i18n:getText("guidanceSteering_warning_createTrackFirst"), 2000)
+        return
+    end
+
+    -- FS25 coexistence: refuse to engage GS steering while the built-in Steering Assist is
+    -- active on this vehicle (they both drive the steering axis). Guard the getter so
+    -- vehicles without the base spec don't error. Only checked when turning steering ON.
+    if not spec.lastInputValues.guidanceSteeringIsActive
+        and self.getAIAutomaticSteeringState ~= nil
+        and self:getAIAutomaticSteeringState() == AIAutomaticSteering.STATE.ACTIVE then
+        g_currentMission:showBlinkingWarning(g_i18n:getText("guidanceSteering_warning_baseGpsActive"), 2000)
         return
     end
 

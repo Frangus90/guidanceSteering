@@ -43,15 +43,26 @@ end
 
 ---Show the input dialog for setting the current cardinal.
 local function showCardinalDialog(target)
-    if target.vehicle == g_currentMission.controlledVehicle then
-        g_gui:showTextInputDialog({
-            text = g_i18n:getText("guidanceSteering_setting_cardinalTitle"),
-            defaultText = "0",
-            maxCharacters = 3,
-            target = target,
-            callback = CardinalStrategy.cardinalCallback,
-            confirmText = g_i18n:getText("guidanceSteering_setting_cardinalConfirmText")
-        })
+    -- FS25: g_currentMission.controlledVehicle was removed; use g_localPlayer:getCurrentVehicle().
+    if target.vehicle == g_localPlayer:getCurrentVehicle() then
+        -- FS25 replaced g_gui:showTextInputDialog(args-table) with the static
+        -- TextInputDialog.show(callback, target, defaultText, dialogPrompt, _, maxChars,
+        -- confirmText, callbackArgs). Callback is invoked as target:callback(text, clickOk),
+        -- which matches CardinalStrategy:cardinalCallback(cardinal). Guarded so an
+        -- unexpected API shape can't crash the strategy.
+        if TextInputDialog ~= nil and TextInputDialog.show ~= nil then
+            TextInputDialog.show(
+                CardinalStrategy.cardinalCallback,
+                target,
+                "0",
+                g_i18n:getText("guidanceSteering_setting_cardinalTitle"),
+                nil,
+                3,
+                g_i18n:getText("guidanceSteering_setting_cardinalConfirmText")
+            )
+        else
+            Logger.warning("CardinalStrategy: TextInputDialog.show unavailable; skipping cardinal prompt.")
+        end
     end
 end
 
@@ -66,7 +77,7 @@ end
 function CardinalStrategy:cardinalCallback(cardinal)
     cardinal = tonumber(cardinal)
     if cardinal ~= nil then
-        self.currentCardinal = MathUtil.degToRad(cardinal)
+        self.currentCardinal = math.rad(cardinal)
 
         local spec = self.vehicle.spec_globalPositioningSystem
         if spec.lineStrategy:getIsGuidancePossible() then

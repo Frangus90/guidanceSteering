@@ -191,7 +191,7 @@ function CurveABStrategy:createParallelSpline(points, data, dir)
         local x = p.x + data.width * dirZ * dir * lineXDir
         local z = p.z - data.width * dirX * dir * lineZDir
         -- Todo: only needed for draw
-        local y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, 0, z)
+        local y = getTerrainHeightAtWorldPos(g_terrainNode or g_currentMission.terrainRootNode, x, 0, z)
 
         local point = {
             x = x,

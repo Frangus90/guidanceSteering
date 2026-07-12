@@ -68,7 +68,7 @@ function ABPoint:_createNextPoint(data, name)
     local dx, dy, dz = localDirectionToWorld(self._refNode, 0, 0, 1)
     local upX, upY, upZ = localDirectionToWorld(self._refNode, 0, 1, 0)
 
-    y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, x, y, z)
+    y = getTerrainHeightAtWorldPos(g_terrainNode or g_currentMission.terrainRootNode, x, y, z)
 
     link(getRootNode(), p)
 

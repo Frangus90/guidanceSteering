@@ -25,6 +25,28 @@ local function getDirectionBeta(data, autoInvertOffset)
     return data.alphaRad
 end
 
+---FS25-unverified-API guard: MathUtil.getLineLineIntersection2D could not be confirmed
+---present in FS25. Delegate to the engine function when it exists (so it stays the one
+---used); otherwise fall back to an equivalent local 2D parametric line intersection with
+---the same contract: args (p1x,p1z, dir1x,dir1z, p2x,p2z, dir2x,dir2z); returns
+---(hasIntersection, s, t) where s/t are the parameters along line 1 / line 2.
+local function getLineLineIntersection2D(p1x, p1z, d1x, d1z, p2x, p2z, d2x, d2z)
+    if MathUtil.getLineLineIntersection2D ~= nil then
+        return MathUtil.getLineLineIntersection2D(p1x, p1z, d1x, d1z, p2x, p2z, d2x, d2z)
+    end
+
+    local denominator = d1x * d2z - d1z * d2x
+    if math.abs(denominator) < 0.00001 then
+        return false
+    end
+
+    local wx, wz = p2x - p1x, p2z - p1z
+    local s = (wx * d2z - wz * d2x) / denominator
+    local t = (wx * d1z - wz * d1x) / denominator
+
+    return true, s, t
+end
+
 ---Guides the given vehicle based on the guidance data.
 ---@param vehicle table
 ---@param dt number delta time
@@ -80,7 +102,7 @@ function DriveUtil.driveToPoint(vehicle, dt, tX, tZ)
             dirX, dirZ = -halfZ, halfX
         end
 
-        local hasIntersection, _, f2 = MathUtil.getLineLineIntersection2D(halfX, halfZ, dirX, dirZ, 0, 0, tX, 0)
+        local hasIntersection, _, f2 = getLineLineIntersection2D(halfX, halfZ, dirX, dirZ, 0, 0, tX, 0)
 
         local rotTime = 0
         if hasIntersection and math.abs(f2) < DriveUtil.HIT_THRESHOLD then
