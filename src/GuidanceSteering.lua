@@ -33,8 +33,11 @@ GuidanceSteering.GUI_DEBUG = false
 ---@param element table root GuiElement to walk (the frame controller)
 ---@param depth number|nil current recursion depth (internal)
 ---@param maxDepth number|nil maximum depth to descend (default 4)
-function GuidanceSteering.dumpGuiTree(label, element, depth, maxDepth)
-    if not GuidanceSteering.GUI_DEBUG or element == nil then
+---@param force boolean|nil dump even when GUI_DEBUG is false (used to enable the dump for a
+---single frame while the global flag stays off); threaded through the recursion so the whole
+---subtree is logged.
+function GuidanceSteering.dumpGuiTree(label, element, depth, maxDepth, force)
+    if (not GuidanceSteering.GUI_DEBUG and not force) or element == nil then
         return
     end
 
@@ -64,7 +67,7 @@ function GuidanceSteering.dumpGuiTree(label, element, depth, maxDepth)
 
     if depth < maxDepth and type(element.elements) == "table" then
         for _, child in ipairs(element.elements) do
-            GuidanceSteering.dumpGuiTree(label, child, depth + 1, maxDepth)
+            GuidanceSteering.dumpGuiTree(label, child, depth + 1, maxDepth, force)
         end
     end
 end

@@ -120,6 +120,20 @@
         <Value name="margin" value="0px 4px 0px 2px" />
     </Profile>
 
+    <!-- Section header for the right column, which is a PLAIN GuiElement (not a BoxLayout).
+         gsSectionHeader extends fs25_settingsSectionHeader, whose anchor/margin behaviour only
+         resolves correctly inside a settings-layout cell; dropped into the plain trackListBox it
+         doubled the header's Y offset and threw it off-screen (GUI_DEBUG: topFromTop=-499). This
+         self-contained profile extends gsTextBase (no layout base), so an explicitly positioned
+         Text follows the clean bottom-left model (verified against the empty-state text). Bold +
+         uppercase to read like the left column's headers. -->
+    <Profile name="gsRightSectionHeader" extends="gsTextBase">
+        <Value name="textSize" value="20px" />
+        <Value name="textBold" value="true" />
+        <Value name="textUpperCase" value="true" />
+        <Value name="textVerticalAlignment" value="middle" />
+    </Profile>
+
     <!-- ============================================================= -->
     <!-- Plain action buttons (glyph-free: they do NOT extend buttonBack, so they carry no
          MENU_BACK input glyph, which was the source of the stray "ESC" blocks). -->
@@ -205,7 +219,12 @@
              on focus. -->
         <Value name="imageSliceId" value="gui.button_middle" />
         <Value name="imageColor" value="$preset_colorRowBg" />
-        <Value name="imageFocusedColor" value="$preset_colorGlassLight" />
+        <!-- Focus highlight. colorGlassLight (0.72 grey) drew as a jarring light-grey block
+             behind the focused Track name field (user-flagged) that looked inconsistent with the
+             dark, unfocused inputs. Use a subtle dark brighten instead so focus is still legible
+             but the field stays in the same dark family as the rest. Applies to every gsTextInput
+             (Track name + headland distance) so both remain consistent. -->
+        <Value name="imageFocusedColor" value="0.15 0.15 0.15 0.75" />
     </Profile>
 
     <!-- Single settings-style row: label on the left, boxed TextInput on the right (positions
@@ -240,37 +259,67 @@
         <Value name="alignmentY" value="top" />
     </Profile>
 
+    <!-- Right column X derivation (GUI_DEBUG-measured): the widest left rows (the two
+         gsMultiTextOptionContainer rows) overflow the 720px left column, ending at ~844.5 ref
+         from the container's left. The previous x=780 put this column's left edge (and thus the
+         list + empty-state text) INSIDE those rows (~65 ref overlap, unreadable jumble). Move the
+         left edge to 885 ref: ~40 ref gutter past the widest row (844.5), and content still ends
+         at 885+609=1494 ref, 56 ref clear of the container's 1550 ref right edge. No list narrowing
+         needed (container had 161 ref of right-side slack). -->
     <Profile name="gsStrategyRightColumn" extends="emptyPanel">
         <Value name="size" value="620px 540px" />
-        <Value name="position" value="780px 223px" />
+        <Value name="position" value="885px 223px" />
     </Profile>
 
     <!-- ============================================================= -->
     <!-- Track list (FS25 SmoothList: standalone layout profile, no removed base). -->
     <!-- ============================================================= -->
 
-    <Profile name="trackList" extends="emptyPanel">
-        <Value name="size" value="590px 540px" />
+    <Profile name="gsTrackList" extends="emptyPanel">
+        <!-- 484px (not 540) leaves room at the column top for the SAVED TRACKS section header
+             (the list now starts ~110px below the column top, mirroring AFM/Courseplay's
+             header-above-list layout). Rows fill from the top with the default SmoothList
+             alignment (no listItemAlignment override) — the same as every working FS25 list
+             (e.g. Courseplay's course list). An earlier listItemAlignment="end" was removed from
+             the frame XML: it pushed the single rendered cell out of the clip rect (invisible). -->
+        <Value name="size" value="590px 484px" />
         <Value name="selectOnScroll" value="true" />
         <Value name="isHorizontalList" value="false" />
         <Value name="itemsPerCol" value="11" />
         <Value name="listItemHeight" value="49px" />
         <Value name="listItemWidth" value="590px" />
-        <Value name="rowBackgroundProfile" value="trackListItem" />
-        <Value name="rowBackgroundProfileAlternate" value="trackListItemAlternate" />
+        <Value name="rowBackgroundProfile" value="gsTrackListItem" />
+        <Value name="rowBackgroundProfileAlternate" value="gsTrackListItemAlternate" />
     </Profile>
 
-    <Profile name="trackListItem">
+    <!-- Docked scrollbar for the track list. The base fs25_listSliderBox positions itself from
+         the parent's right/anchored edge, which put the bare element far off-screen (measured
+         x=4445 of 3840 in the GUI_DEBUG dump). AFM/Courseplay fix this by re-anchoring the slider
+         box top-left and giving it an explicit position beside the list; mirror that. x=600px sits
+         just right of the 590px list; y=-112px drops it to the list top (112px below the column
+         top, matching the header offset); height 484px matches the list. -->
+    <Profile name="gsTrackListSliderBox" extends="fs25_listSliderBox" with="anchorTopLeft">
+        <Value name="size" value="9px 484px" />
+        <Value name="position" value="600px -112px" />
+    </Profile>
+
+    <Profile name="gsTrackListItem">
         <Value name="type" value="listItem" />
+        <!-- REQUIRED for any row visuals to draw: like the buttons/text-input above, imageColor
+             tints nothing without an image slice, so the rows (and, crucially, the selected-row
+             highlight) were invisible. gui.button_middle is the proven flat slice used elsewhere
+             in this frame. Unselected rows stay near-transparent (colorListRowBackground alpha),
+             selected/focused rows show the opaque UI blue so the current track is visible. -->
+        <Value name="imageSliceId" value="gui.button_middle" />
         <Value name="imageColor" value="$preset_colorListRowBackground" />
         <Value name="imageFocusedColor" value="$preset_colorMainUI" />
         <Value name="imageSelectedColor" value="$preset_colorMainUI" />
         <Value name="size" value="590px 47px" />
         <Value name="position" value="0px 0px" />
     </Profile>
-    <Profile name="trackListItemAlternate" extends="trackListItem" with="gsAlternateRow" />
+    <Profile name="gsTrackListItemAlternate" extends="gsTrackListItem" with="gsAlternateRow" />
 
-    <Profile name="trackListItemTitle" extends="gsTextBase">
+    <Profile name="gsTrackListItemTitle" extends="gsTextBase">
         <Value name="size" value="590px 47px" />
         <Value name="textMaxWidth" value="560px" />
         <Value name="textVerticalAlignment" value="middle" />
@@ -278,5 +327,20 @@
         <Value name="textBold" value="false" />
         <Value name="textOffset" value="20px 2px" />
         <Value name="textFocusedOffset" value="20px 2px" />
+    </Profile>
+
+    <!-- Empty-state helper text, shown in the track-list column when there are no saved tracks.
+         Positioned near the top of the 620x540 right column (position is from the column's
+         bottom-left), wrapping within the list width. -->
+    <Profile name="gsTrackListEmptyText" extends="gsTextBase">
+        <Value name="size" value="560px 120px" />
+        <!-- Sits just under the SAVED TRACKS header, at the top of the (now shorter) list area
+             so the empty message reads directly below the header. -->
+        <Value name="position" value="20px 357px" />
+        <Value name="textMaxWidth" value="540px" />
+        <Value name="textSize" value="17px" />
+        <Value name="textColor" value="0.85 0.85 0.85 1" />
+        <Value name="textVerticalAlignment" value="top" />
+        <Value name="textAlignment" value="left" />
     </Profile>
 </GUIProfiles>

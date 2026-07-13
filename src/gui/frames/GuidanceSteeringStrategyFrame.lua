@@ -32,6 +32,7 @@ GuidanceSteeringStrategyFrame.CONTROLS = {
     POINT_B_BUTTON = "guidanceSteeringPointBButton",
     CREATE_TRACK = "guidanceSteeringCreateTrackButton",
     SAVE_TRACK = "guidanceSteeringSaveTrackButton",
+    LOAD_TRACK = "guidanceSteeringLoadTrackButton",
     REMOVE_TRACK = "guidanceSteeringRemoveTrackButton",
     ROTATE_TRACK = "guidanceSteeringRotateTrackButton",
     -- Warning box
@@ -137,8 +138,6 @@ function GuidanceSteeringStrategyFrame:onFrameOpen()
             self.allowSave = true
         end)
     end
-
-    GuidanceSteering.dumpGuiTree("StrategyFrame", self)
 end
 
 function GuidanceSteeringStrategyFrame:onFrameClose()
@@ -196,6 +195,14 @@ function GuidanceSteeringStrategyFrame:buildList()
 
     self.list:reloadData()
 
+    -- Empty-state: an empty SmoothList draws zero cells and both the list and its column are
+    -- transparent (emptyPanel), so with no tracks the whole right side is invisible. Show a
+    -- helper text in that case so an empty list is never a silent mystery. The element is
+    -- auto-bound by exposeControlsAsFields (id in the frame XML).
+    if self.guidanceSteeringTrackListEmptyText ~= nil then
+        self.guidanceSteeringTrackListEmptyText:setVisible(#self.tracks == 0)
+    end
+
     -- Restore the previous selection, defaulting to the first row.
     local selectedIndex = 1
     for index, entry in ipairs(self.tracks) do
@@ -205,8 +212,12 @@ function GuidanceSteeringStrategyFrame:buildList()
         end
     end
 
-    if #self.tracks > 0 and self.list.setSelectedIndex ~= nil then
-        self.list:setSelectedIndex(selectedIndex)
+    -- FS25 SmoothList selects by (section, index) via setSelectedItem; there is no
+    -- setSelectedIndex on SmoothListElement (that lives on the paging tab list), so the old
+    -- call was a silent no-op and the prior selection was lost on every reload. Section is 1
+    -- (single flat section, see getNumberOfSections).
+    if #self.tracks > 0 and self.list.setSelectedItem ~= nil then
+        self.list:setSelectedItem(1, selectedIndex)
     end
 
     self:onListSelectionChanged()
@@ -283,6 +294,25 @@ function GuidanceSteeringStrategyFrame:onClickSaveTrack()
             end
         end
     end
+end
+
+---Explicit "Load track" button: previously the selected track only loaded when the menu
+---closed (see onFrameClose above). Loads immediately and records lastLoadedTrackId so
+---onFrameClose doesn't reload it again on close.
+function GuidanceSteeringStrategyFrame:onClickLoadTrack()
+    local trackId = self:getSelectedTrackId()
+
+    if trackId == nil then
+        g_currentMission:showBlinkingWarning(g_i18n:getText("guidanceSteering_warning_noTrackSelected"), 2000)
+        return
+    end
+
+    local track = self.guidanceSteering:getTrack(trackId)
+
+    self:loadTrack(trackId)
+    self.lastLoadedTrackId = trackId
+
+    g_currentMission:showBlinkingWarning(g_i18n:getText("guidanceSteering_warning_trackLoaded"):format(track ~= nil and track.name or tostring(trackId)), 2000)
 end
 
 function GuidanceSteeringStrategyFrame:onClickRemoveTrack()

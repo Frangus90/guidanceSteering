@@ -1158,6 +1158,7 @@ function GlobalPositioningSystem.registerMultiPurposeActionEvents(self)
 
     event:addAction(function()
         self:updateGuidanceData(nil, false, true)
+        g_currentMission:showBlinkingWarning(g_i18n:getText("guidanceSteering_warning_lineReset"), 2000)
         return true
     end)
 

@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../../Documents/My Games/FarmingSimulator2025"
+		}
+	],
+	"settings": {
+		"claudeCodeChat.permissions.yoloMode": true
+	}
+}

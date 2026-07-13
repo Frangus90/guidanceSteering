@@ -30,6 +30,10 @@
         <text name="guidanceSteering_warning_setWidth" text="Please set a working width first!"/>
         <text name="guidanceSteering_warning_createTrackFirst" text="Please create or load a track first!"/>
         <text name="guidanceSteering_warning_baseGpsActive" text="Turn off the built-in Steering Assist before enabling Guidance Steering!"/>
+        <text name="guidanceSteering_warning_lineReset" text="Guidance line reset - drive and press again to set point A"/>
+        <text name="guidanceSteering_warning_noTrackSelected" text="Please select a track first!"/>
+        <text name="guidanceSteering_warning_trackLoaded" text="Track '%s' loaded!"/>
+        <text name="guidanceSteering_info_noTracks" text="No saved tracks yet. Create an AB line, then press Create track to save it."/>
 
         <!--GUI-->
         <text name="guidanceSteering_ui_settings" text="Guidance settings"/>
@@ -57,6 +61,16 @@
         <text name="guidanceSteering_tooltip_strategyMethod" text="Determine which strategy method to use"/>
         <text name="guidanceSteering_tooltip_currentTrack" text="Select the current track to use"/>
         <text name="guidanceSteering_tooltip_cardinals" text="Set the cardinal points"/>
+
+        <!--Strategy tab: track controls-->
+        <text name="guidanceSteering_tooltip_trackName" text="Name used when creating or saving a track"/>
+        <text name="guidanceSteering_tooltip_pointA" text="Sets point A, the start of the current line"/>
+        <text name="guidanceSteering_tooltip_pointB" text="Sets point B, the end of the line (drive at least 15 m first)"/>
+        <text name="guidanceSteering_tooltip_createTrack" text="Saves the current AB line as a NEW track with the name above"/>
+        <text name="guidanceSteering_tooltip_saveTrack" text="Overwrites the SELECTED track with the current line and name"/>
+        <text name="guidanceSteering_tooltip_loadTrack" text="Applies the selected track to the vehicle"/>
+        <text name="guidanceSteering_tooltip_removeTrack" text="Deletes the selected track"/>
+        <text name="guidanceSteering_tooltip_rotateTrack" text="Rotates the current guidance line 90 degrees"/>
 
         <text name="guidanceSteering_setting_scopeTrackFarmId" text="Save track to farm"/>
         <text name="guidanceSteering_tooltip_scopeTrackFarmId" text="Save the track scoped to the farm of the vehicle, by default it's accessible for everyone"/>
@@ -87,12 +101,14 @@
         <text name="guidanceSteering_setting_strategy" text="Line creation"/>
         <text name="guidanceSteering_setting_strategyMethod" text="Line method"/>
         <text name="guidanceSteering_setting_currentTrack" text="Current track"/>
+        <text name="guidanceSteering_setting_savedTracks" text="Saved tracks"/>
 
         <text name="guidanceSteering_setting_pointA" text="Set A"/>
         <text name="guidanceSteering_setting_pointB" text="Set B"/>
         <text name="guidanceSteering_setting_newTrack" text="Create track"/>
         <text name="guidanceSteering_setting_removeTrack" text="Remove track"/>
         <text name="guidanceSteering_setting_saveTrack" text="Save track"/>
+        <text name="guidanceSteering_setting_loadTrack" text="Load track"/>
 
         <text name="guidanceSteering_setting_header_headland" text="Headland management"/>
 

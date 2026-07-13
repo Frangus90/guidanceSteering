@@ -51,7 +51,7 @@
             <GuiElement profile="gsTextInputRow">
                 <Text profile="gsRowLabel" position="0px 5px" text="Track name" />
                 <TextInput profile="gsTextInput" position="320px 4px" id="guidanceSteeringTrackNameElement"
-                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_currentTrack"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_trackName"
                             maxCharacters="30" imeKeyboardType="normal" imeTitle="$l10n_ui_savegameName" imeDescription="$l10n_ui_savegameName"
                             imePlaceholder="$l10n_ui_savegameName" />
             </GuiElement>
@@ -65,40 +65,71 @@
 
             <GuiElement profile="gsButtonRow" size="700px 55px">
                 <ThreePartBitmap profile="gsButtonPill" position="0px 5px" size="200px 45px" />
-                <Button profile="gsSettingsButtonWide" position="0px 5px" size="200px 45px" text="$l10n_guidanceSteering_setting_pointA" onClick="onClickSetPointA" id="guidanceSteeringPointAButton" />
+                <Button profile="gsSettingsButtonWide" position="0px 5px" size="200px 45px" text="$l10n_guidanceSteering_setting_pointA" onClick="onClickSetPointA" id="guidanceSteeringPointAButton"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_pointA" />
                 <ThreePartBitmap profile="gsButtonPill" position="220px 5px" size="200px 45px" />
-                <Button profile="gsSettingsButtonWide" position="220px 5px" size="200px 45px" text="$l10n_guidanceSteering_setting_pointB" onClick="onClickSetPointB" id="guidanceSteeringPointBButton" />
+                <Button profile="gsSettingsButtonWide" position="220px 5px" size="200px 45px" text="$l10n_guidanceSteering_setting_pointB" onClick="onClickSetPointB" id="guidanceSteeringPointBButton"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_pointB" />
             </GuiElement>
 
+            <!-- 5 buttons at 128px (was 160px for 4) so the row still fits the 700px row / 720px
+                 column width without encroaching on the right column's track list (gap=15px,
+                 matching the original 160px+15px spacing: 5*128 + 4*15 = 700). -->
             <GuiElement profile="gsButtonRow" size="700px 55px">
-                <ThreePartBitmap profile="gsButtonPill" position="0px 5px" size="160px 45px" />
-                <Button profile="gsSettingsButtonWide" position="0px 5px" size="160px 45px" text="$l10n_guidanceSteering_setting_newTrack" onClick="onClickCreateTrack" id="guidanceSteeringCreateTrackButton" />
-                <ThreePartBitmap profile="gsButtonPill" position="175px 5px" size="160px 45px" />
-                <Button profile="gsSettingsButtonWide" position="175px 5px" size="160px 45px" text="$l10n_guidanceSteering_setting_saveTrack" onClick="onClickSaveTrack" id="guidanceSteeringSaveTrackButton" />
-                <ThreePartBitmap profile="gsButtonPill" position="350px 5px" size="160px 45px" />
-                <Button profile="gsSettingsButtonWide" position="350px 5px" size="160px 45px" text="$l10n_guidanceSteering_setting_removeTrack" onClick="onClickRemoveTrack" id="guidanceSteeringRemoveTrackButton" />
-                <ThreePartBitmap profile="gsButtonPill" position="525px 5px" size="160px 45px" />
-                <Button profile="gsSettingsButtonWide" position="525px 5px" size="160px 45px" text="Rotate" onClick="onClickRotateTrack" id="guidanceSteeringRotateTrackButton" />
+                <ThreePartBitmap profile="gsButtonPill" position="0px 5px" size="128px 45px" />
+                <Button profile="gsSettingsButtonWide" position="0px 5px" size="128px 45px" text="$l10n_guidanceSteering_setting_newTrack" onClick="onClickCreateTrack" id="guidanceSteeringCreateTrackButton"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_createTrack" />
+                <ThreePartBitmap profile="gsButtonPill" position="143px 5px" size="128px 45px" />
+                <Button profile="gsSettingsButtonWide" position="143px 5px" size="128px 45px" text="$l10n_guidanceSteering_setting_saveTrack" onClick="onClickSaveTrack" id="guidanceSteeringSaveTrackButton"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_saveTrack" />
+                <ThreePartBitmap profile="gsButtonPill" position="286px 5px" size="128px 45px" />
+                <Button profile="gsSettingsButtonWide" position="286px 5px" size="128px 45px" text="$l10n_guidanceSteering_setting_loadTrack" onClick="onClickLoadTrack" id="guidanceSteeringLoadTrackButton"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_loadTrack" />
+                <ThreePartBitmap profile="gsButtonPill" position="429px 5px" size="128px 45px" />
+                <Button profile="gsSettingsButtonWide" position="429px 5px" size="128px 45px" text="$l10n_guidanceSteering_setting_removeTrack" onClick="onClickRemoveTrack" id="guidanceSteeringRemoveTrackButton"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_removeTrack" />
+                <ThreePartBitmap profile="gsButtonPill" position="572px 5px" size="128px 45px" />
+                <Button profile="gsSettingsButtonWide" position="572px 5px" size="128px 45px" text="Rotate" onClick="onClickRotateTrack" id="guidanceSteeringRotateTrackButton"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_rotateTrack" />
             </GuiElement>
 
         </BoxLayout>
 
         <!-- ===================== Right column: track list ===================== -->
+        <!-- Plain GuiElement (not a layout): children are positioned from the column's BOTTOM-left.
+             The column top is aligned with the left column (~474 from screen top, verified in the
+             GUI_DEBUG dump). The SAVED TRACKS header pins to the column top; the list sits below it
+             and its rows fill from the top (default SmoothList alignment, as every working FS25
+             list uses). NOTE: an explicit listItemAlignment="end" was removed here — it shifted the
+             single-row content by the full under-fill offset and pushed the only rendered cell out
+             of the list's clip rect, so nothing was visible. -->
+
         <GuiElement profile="gsStrategyRightColumn" id="trackListBox">
-            <SmoothList profile="trackList" id="list" onSelectionChanged="onListSelectionChanged"
+            <!-- Section header, styled like the left column's headers. Answers "is this a selector"
+                 on its own: it labels the list as the list of saved tracks. Positioned at the column
+                 top (topFromTop ~482, level with the left column's first header). -->
+            <Text profile="gsRightSectionHeader" size="400px 50px" position="0px 486px" text="$l10n_guidanceSteering_setting_savedTracks" />
+
+            <SmoothList profile="gsTrackList" id="list" onSelectionChanged="onListSelectionChanged"
                         onClick="onClickSelect" onDoubleClick="onClickSelect" showHighlights="true">
-                <ListItem profile="trackListItem">
+                <ListItem profile="gsTrackListItem">
                     <!-- FS25 SmoothList: populateCellForItemInSection calls cell:getAttribute("title"),
                          which looks the child up by its #name (GuiElement:loadFromXML reads #name; there
                          is no #attribute reader, so the old attribute="title" was inert -> blank rows).
                          Matches Courseplay's working lists (name="title"). -->
-                    <Text profile="trackListItemTitle" name="title" />
+                    <Text profile="gsTrackListItemTitle" name="title" />
                 </ListItem>
             </SmoothList>
 
-            <ThreePartBitmap profile="fs25_listSliderBox" id="itemListSlider" position="595px 0px">
+            <ThreePartBitmap profile="gsTrackListSliderBox" id="itemListSlider">
                 <Slider profile="fs25_listSlider" dataElementId="list" handleFocus="false" />
             </ThreePartBitmap>
+
+            <!-- Empty-state helper. Shown by buildList only when there are 0 tracks (an empty
+                 SmoothList renders nothing, and both the list and this column are transparent
+                 emptyPanels, so without this the whole right side is blank with no cue). -->
+            <Text profile="gsTrackListEmptyText" id="guidanceSteeringTrackListEmptyText"
+                        text="$l10n_guidanceSteering_info_noTracks" visible="false" />
         </GuiElement>
 
         <!-- Help line (a Text, so GuiElement:onFocusEnter -> toolTipElement:setText works). -->
