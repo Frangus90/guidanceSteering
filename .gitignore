@@ -44,3 +44,6 @@ fabric.properties
 # Editor-based Rest Client
 .idea/httpRequests
 
+
+# FS25 modding skill reference library (third-party, 2000+ files - keeps the @ file picker usable)
+.claude/skills/fs25-modding/references/

@@ -18,6 +18,57 @@ GuidanceSteering.GROUND_CLEARANCE_OFFSET = .25
 -- true if the menu regresses in-game and core AB-line steering (keybinds) must keep working.
 GuidanceSteering.PHASE1_NO_UI = false
 
+-- FS25 layout debug (TEMPORARY). When true, each settings/strategy frame dumps its element
+-- tree to log.txt on open (engine-computed absPosition/absSize per element), giving ground
+-- truth for menu layout instead of guessing from screenshots. Remove by flipping this to
+-- false (or deleting GuidanceSteering.dumpGuiTree below + its two onFrameOpen callers).
+GuidanceSteering.GUI_DEBUG = false
+
+---Recursively log a frame's GUI element tree (id/profile, engine absPosition/absSize in both
+---normalized 0..1 and pixels, top-edge distance from the screen top, and visibility). FS25's
+---GUI Y origin is bottom-left, so absPosition[2] is the element's BOTTOM edge; "topPx" is
+---derived as the distance of the element's TOP edge from the screen top, which matches how a
+---4K screenshot is measured. Depth-limited so only our frame subtree is logged.
+---@param label string dump header (e.g. "SettingsFrame")
+---@param element table root GuiElement to walk (the frame controller)
+---@param depth number|nil current recursion depth (internal)
+---@param maxDepth number|nil maximum depth to descend (default 4)
+function GuidanceSteering.dumpGuiTree(label, element, depth, maxDepth)
+    if not GuidanceSteering.GUI_DEBUG or element == nil then
+        return
+    end
+
+    depth = depth or 0
+    maxDepth = maxDepth or 4
+
+    local sw, sh = g_screenWidth or 0, g_screenHeight or 0
+    if depth == 0 then
+        Logger.info(("=== GUI_DEBUG %s (screen %dx%d, Y origin bottom-left) ==="):format(tostring(label), sw, sh))
+    end
+
+    local id = element.id or element.name or ("<" .. tostring(element.profile) .. ">")
+    local pos = element.absPosition
+    local size = element.absSize
+
+    if type(pos) == "table" and type(size) == "table" and pos[1] ~= nil and size[1] ~= nil then
+        local topPx = math.floor((1 - (pos[2] + size[2])) * sh) -- element top edge, px from screen top
+        Logger.info(("%s%s | pos=(%.4f,%.4f) size=(%.4f,%.4f) | px x=%d w=%d h=%d topFromTop=%d | vis=%s"):format(
+            string.rep("  ", depth), tostring(id),
+            pos[1], pos[2], size[1], size[2],
+            math.floor(pos[1] * sw), math.floor(size[1] * sw), math.floor(size[2] * sh), topPx,
+            tostring(element.visible)))
+    else
+        Logger.info(("%s%s | (no absPosition yet) | vis=%s"):format(
+            string.rep("  ", depth), tostring(id), tostring(element.visible)))
+    end
+
+    if depth < maxDepth and type(element.elements) == "table" then
+        for _, child in ipairs(element.elements) do
+            GuidanceSteering.dumpGuiTree(label, child, depth + 1, maxDepth)
+        end
+    end
+end
+
 local GuidanceSteering_mt = Class(GuidanceSteering)
 
 function GuidanceSteering:new(mission, modDirectory, modName, i18n, gui, inputManager, messageCenter)
@@ -48,9 +99,6 @@ function GuidanceSteering:new(mission, modDirectory, modName, i18n, gui, inputMa
     self.showGuidanceLinesAsDots = false
     self.guidanceTerrainAngleIsActive = true
     self.lineOffset = GuidanceSteering.GROUND_CLEARANCE_OFFSET
-
-    BaseMission.onEnterVehicle = Utils.appendedFunction(BaseMission.onEnterVehicle, GuidanceSteering.onEnterVehicle)
-    BaseMission.onLeaveVehicle = Utils.appendedFunction(BaseMission.onLeaveVehicle, GuidanceSteering.onLeaveVehicle)
 
     return self
 end
@@ -181,7 +229,10 @@ local function _createTrack(self, id, data)
         return
     end
 
-    local entry = table.copy(data)
+    -- FS25 removed the FS22 global table.copy; table.clone(t, depth) is the engine idiom
+    -- (see VehicleLoadingData:table.clone(t, math.huge)). Deep clone so the stored entry does
+    -- not alias the caller's guidanceData subtable.
+    local entry = table.clone(data, math.huge)
 
     if not table.hasElement(self.savedTracks, entry) then
         table.addElement(self.savedTracks, entry)
@@ -351,29 +402,6 @@ end
 
 function GuidanceSteering:setIsAutoInvertOffsetEnabled(enabled)
     self.autoInvertOffset = enabled
-end
-
----Set the current vehicle for the GS GUI.
-function GuidanceSteering:onEnterVehicle()
-    if self:getIsClient() then
-        -- FS25: g_currentMission.controlledVehicle was removed; use g_localPlayer:getCurrentVehicle().
-        -- Note: BaseMission.onEnterVehicle no longer exists in FS25, so this hook does not
-        -- currently fire (rewiring to the spec-level onEnterVehicle event is a later UI phase).
-        local vehicle = g_localPlayer ~= nil and g_localPlayer:getCurrentVehicle() or nil
-        local spec = vehicle ~= nil and vehicle.spec_globalPositioningSystem or nil
-        local hasGuidanceSystem = spec ~= nil and spec.hasGuidanceSystem
-        local gui = g_currentMission.guidanceSteering.ui
-
-        gui:setVehicle(hasGuidanceSystem and vehicle or nil)
-    end
-end
-
----Set remove the vehicle from the GS GUI.
-function GuidanceSteering:onLeaveVehicle()
-    if self:getIsClient() then
-        local gui = g_currentMission.guidanceSteering.ui
-        gui:setVehicle(nil)
-    end
 end
 
 function GuidanceSteering.installSpecializations(vehicleTypeManager, specializationManager, modDirectory, modName)

@@ -1,83 +1,107 @@
 <?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<!--
+    FS25 Guidance Steering - Tracks / strategy page (rebuilt on the standard FS25 pattern).
+
+    Layout: fs25_menuContainer (fills the paging area so only the active page renders).
+      - left column  (BoxLayout gsStrategyLeftColumn): strategy + method selectors, track
+        name input, save-to-farm toggle, and the A/B + create/save/remove/rotate buttons.
+      - right column (gsStrategyRightColumn): the track SmoothList + docked slider.
+
+    Selectors are bare <MultiTextOption profile="fs25_settingsMultiTextOption"> (auto-adds
+    arrows/text/bg; only the "label" child is declared). Action buttons are glyph-free
+    gsSettings buttons. Tooltips route to settingsHelpBoxText (a Text). Every element the
+    Lua drives keeps its original id.
+-->
 <GUI name="guidanceSteeringStrategy">
-    <GuiElement type="bitmap" profile="settingsBox" position="20px 170px" positionOrigin="bottomLeft" id="container">
-        <GuiElement type="boxLayout" profile="ingameMenuSettingsLayout" position="-20px 0px" size="350px 500px" id="boxLayout">
-
-            <GuiElement type="multiTextOption" profile="guidanceSettingsMultiTextOptionSettings" id="guidanceSteeringStrategyElement"
-                        toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_strategy">
-                <GuiElement type="button" profile="multiTextOptionLeft"/>
-                <GuiElement type="button" profile="multiTextOptionRight"/>
-                <GuiElement type="text" profile="multiTextOptionText"/>
-                <GuiElement type="text" profile="multiTextOptionTitle" text="$l10n_guidanceSteering_setting_strategy"/>
-                <GuiElement type="bitmap" profile="multiTextOptionBg"/>
-            </GuiElement>
-
-            <GuiElement type="multiTextOption" profile="guidanceSettingsMultiTextOptionSettings" id="guidanceSteeringStrategyMethodElement"
-                        toolTipElementId="settingsHelpBoxText" onClick="onStrategyChanged" toolTipText="$l10n_guidanceSteering_tooltip_strategyMethod">
-                <GuiElement type="button" profile="multiTextOptionLeft"/>
-                <GuiElement type="button" profile="multiTextOptionRight"/>
-                <GuiElement type="text" profile="multiTextOptionText"/>
-                <GuiElement type="text" profile="multiTextOptionTitle" text="$l10n_guidanceSteering_setting_strategyMethod"/>
-                <GuiElement type="bitmap" profile="multiTextOptionBg"/>
-            </GuiElement>
-
-            <GuiElement type="button" profile="guidanceSettingsButton" text="$l10n_guidanceSteering_setting_pointA" onClick="onClickSetPointA" id="guidanceSteeringPointAButton"/>
-            <GuiElement type="button" profile="guidanceSettingsButton" text="$l10n_guidanceSteering_setting_pointB" onClick="onClickSetPointB" id="guidanceSteeringPointBButton"/>
+    <GuiElement profile="fs25_menuContainer" id="container">
+        <GuiElement profile="fs25_menuHeaderPanel">
+            <Bitmap profile="fs25_menuHeaderIconBg">
+                <Bitmap profile="fs25_menuHeaderIcon" id="strategyHeaderIcon" />
+            </Bitmap>
+            <Text profile="fs25_menuHeaderTitle" id="strategyHeaderText" />
         </GuiElement>
 
-        <GuiElement type="bitmap" profile="ingameMenuWeatherVerticalSeparator" position="-130px -50px" size="2dp 400px"/>
+        <ThreePartBitmap profile="fs25_lineSeparatorTopHighlighted" position="0px -57px" />
 
-        <GuiElement type="boxLayout" profile="ingameMenuSettingsLayout" size="350px 500px" position="350px -30px" id="boxLayout">
+        <!-- ===================== Left column: controls ===================== -->
+        <!-- The column's TOP is pinned just under the separator via the gsStrategyLeftColumn
+             profile's position/size (see the derivation there): FS25 #position is measured from
+             the parent's BOTTOM-left, so pinning the top = parentBottom + position.y + size.y.
+             anchors="0 0 1 1" is kept but is a no-op for this static parent (it only affects how
+             frozen anchor deltas re-expand on a parent resize); position/size alone set the
+             final rectangle. Order is {xMin,xMax,yMin,yMax}. -->
+        <BoxLayout profile="gsStrategyLeftColumn" id="strategyBoxLayout" anchors="0 0 1 1">
 
-            <GuiElement size="350px 48px" type="empty" profile="ingameMenuGameSettingsTextInputWrapper">
-                <GuiElement position="10px 0px" type="textInput" profile="guidanceSettingsTextInput" id="guidanceSteeringTrackNameElement"
-                            onEnterPressed="onEnterPressedTrackName" toolTipElementId="settingsHelpBox" toolTipText="$l10n_toolTip_savegameName"
+            <Text profile="gsSectionHeader" text="$l10n_guidanceSteering_setting_strategy" />
+
+            <!-- The "Line strategy" selector (AB straight vs. curved) shipped with a single option
+                 because curves were never implemented, so the row is removed. The underlying strategy
+                 value stays hardcoded to the default in the Lua (getVehicleTrackData). "Line method"
+                 below is the remaining selector. -->
+
+            <Bitmap profile="gsMultiTextOptionContainer" focusFallthrough="true">
+                <MultiTextOption profile="fs25_settingsMultiTextOption" id="guidanceSteeringStrategyMethodElement"
+                            onClick="onStrategyChanged" toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_strategyMethod">
+                    <Text profile="gsSettingsMultiOptionTitle" name="label" text="$l10n_guidanceSteering_setting_strategyMethod" />
+                </MultiTextOption>
+            </Bitmap>
+
+            <Text profile="gsSectionHeader" text="$l10n_guidanceSteering_setting_currentTrack" />
+
+            <GuiElement profile="gsTextInputRow">
+                <Text profile="gsRowLabel" position="0px 5px" text="Track name" />
+                <TextInput profile="gsTextInput" position="320px 4px" id="guidanceSteeringTrackNameElement"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_currentTrack"
                             maxCharacters="30" imeKeyboardType="normal" imeTitle="$l10n_ui_savegameName" imeDescription="$l10n_ui_savegameName"
-                            imePlaceholder="$l10n_ui_savegameName" focusInit="onOpen"/>
-                <GuiElement position="10px 10px" type="text" profile="guidanceMultiTextOptionTitle" text="$l10n_ui_savegameName"/>
+                            imePlaceholder="$l10n_ui_savegameName" />
             </GuiElement>
 
-            <GuiElement type="checkedOption" profile="guidanceSettingsMultiTextOptionSettings" id="guidanceSteeringScopeFarmIdElement"
-                        toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_scopeTrackFarmId">
-                <GuiElement position="-25px 0px" type="button" profile="multiTextOptionLeft"/>
-                <GuiElement position="-25px 0px" type="button" profile="multiTextOptionRight"/>
-                <GuiElement position="-25px 0px" type="text" profile="multiTextOptionText"/>
-                <GuiElement position="-25px 14px" type="text" profile="multiTextOptionTitle" text="$l10n_guidanceSteering_setting_scopeTrackFarmId"/>
-                <GuiElement position="-25px 0px" type="bitmap" profile="multiTextOptionBg"/>
+            <Bitmap profile="gsMultiTextOptionContainer" focusFallthrough="true">
+                <MultiTextOption profile="fs25_settingsMultiTextOption" id="guidanceSteeringScopeFarmIdElement"
+                            toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_scopeTrackFarmId">
+                    <Text profile="gsSettingsMultiOptionTitle" name="label" text="$l10n_guidanceSteering_setting_scopeTrackFarmId" />
+                </MultiTextOption>
+            </Bitmap>
+
+            <GuiElement profile="gsButtonRow" size="700px 55px">
+                <ThreePartBitmap profile="gsButtonPill" position="0px 5px" size="200px 45px" />
+                <Button profile="gsSettingsButtonWide" position="0px 5px" size="200px 45px" text="$l10n_guidanceSteering_setting_pointA" onClick="onClickSetPointA" id="guidanceSteeringPointAButton" />
+                <ThreePartBitmap profile="gsButtonPill" position="220px 5px" size="200px 45px" />
+                <Button profile="gsSettingsButtonWide" position="220px 5px" size="200px 45px" text="$l10n_guidanceSteering_setting_pointB" onClick="onClickSetPointB" id="guidanceSteeringPointBButton" />
             </GuiElement>
 
-            <GuiElement type="flowLayout" profile="ingameMenuSettingsLayout" size="350px 83px">
-                <GuiElement position="10px 0px" type="button" profile="guidanceButtonDetailRight" id="guidanceSteeringCreateTrackButton" onClick="onClickCreateTrack"/>
-                <GuiElement position="10px 0px" type="button" profile="guidanceButtonDetailLeft" id="guidanceSteeringSaveTrackButton" onClick="onClickSaveTrack"/>
-                <GuiElement position="10px 0px" type="button" profile="guidanceButtonDetailLeft" id="guidanceSteeringRemoveTrackButton" onClick="onClickRemoveTrack"/>
+            <GuiElement profile="gsButtonRow" size="700px 55px">
+                <ThreePartBitmap profile="gsButtonPill" position="0px 5px" size="160px 45px" />
+                <Button profile="gsSettingsButtonWide" position="0px 5px" size="160px 45px" text="$l10n_guidanceSteering_setting_newTrack" onClick="onClickCreateTrack" id="guidanceSteeringCreateTrackButton" />
+                <ThreePartBitmap profile="gsButtonPill" position="175px 5px" size="160px 45px" />
+                <Button profile="gsSettingsButtonWide" position="175px 5px" size="160px 45px" text="$l10n_guidanceSteering_setting_saveTrack" onClick="onClickSaveTrack" id="guidanceSteeringSaveTrackButton" />
+                <ThreePartBitmap profile="gsButtonPill" position="350px 5px" size="160px 45px" />
+                <Button profile="gsSettingsButtonWide" position="350px 5px" size="160px 45px" text="$l10n_guidanceSteering_setting_removeTrack" onClick="onClickRemoveTrack" id="guidanceSteeringRemoveTrackButton" />
+                <ThreePartBitmap profile="gsButtonPill" position="525px 5px" size="160px 45px" />
+                <Button profile="gsSettingsButtonWide" position="525px 5px" size="160px 45px" text="Rotate" onClick="onClickRotateTrack" id="guidanceSteeringRotateTrackButton" />
             </GuiElement>
 
-            <GuiElement type="boxLayout" profile="ingameMenuSettingsLayout" size="350px 83px">
-                <GuiElement position="10px 0px" type="button" profile="guidanceButtonDetailRight" id="guidanceSteeringRotateTrackButton" onClick="onClickRotateTrack"/>
-            </GuiElement>
+        </BoxLayout>
 
+        <!-- ===================== Right column: track list ===================== -->
+        <GuiElement profile="gsStrategyRightColumn" id="trackListBox">
+            <SmoothList profile="trackList" id="list" onSelectionChanged="onListSelectionChanged"
+                        onClick="onClickSelect" onDoubleClick="onClickSelect" showHighlights="true">
+                <ListItem profile="trackListItem">
+                    <!-- FS25 SmoothList: populateCellForItemInSection calls cell:getAttribute("title"),
+                         which looks the child up by its #name (GuiElement:loadFromXML reads #name; there
+                         is no #attribute reader, so the old attribute="title" was inert -> blank rows).
+                         Matches Courseplay's working lists (name="title"). -->
+                    <Text profile="trackListItemTitle" name="title" />
+                </ListItem>
+            </SmoothList>
+
+            <ThreePartBitmap profile="fs25_listSliderBox" id="itemListSlider" position="595px 0px">
+                <Slider profile="fs25_listSlider" dataElementId="list" handleFocus="false" />
+            </ThreePartBitmap>
         </GuiElement>
 
-        <GuiElement type="bitmap" profile="ingameMenuWeatherVerticalSeparator" position="210px -50px" size="2dp 400px"/>
-
-        <GuiElement type="empty" profile="wardrobeListFrame" size="400px 500px" position="455px 0px" id="trackListBox">
-            <!-- FS25: SmoothList (data-source driven). The ListItem below is the reusable
-                 cell prototype; its "title" text is filled by populateCellForItemInSection. -->
-            <GuiElement type="list" size="454px 500px" profile="trackList" id="list" onSelectionChanged="onListSelectionChanged" onClick="onClickSelect" onDoubleClick="onClickSelect" focusInit="onOpen" showHighlights="true">
-                <GuiElement type="listItem" profile="trackListItem">
-                    <GuiElement type="text" profile="trackListItemTitle" name="title"/>
-                </GuiElement>
-            </GuiElement>
-        </GuiElement>
-
-        <GuiElement type="threePartBitmap" profile="verticalListSliderRightDocked" id="itemListSlider" size="12px 500px" position="160px 0px">
-            <GuiElement type="slider" profile="verticalListSliderBar" dataElementId="list" handleFocus="false" size="6px 500px"/>
-        </GuiElement>
-    </GuiElement>
-
-    <!-- Tool tip display -->
-    <GuiElement type="bitmap" profile="ingameMenuHelpRowBg" position="30px 90px" id="settingsHelpBox" visible="true">
-        <GuiElement type="bitmap" profile="ingameMenuHelpRowIcon"/>
-        <GuiElement type="text" profile="ingameMenuHelpRowText" id="settingsHelpBoxText" text="" onTextChanged="onToolTipBoxTextChanged"/>
+        <!-- Help line (a Text, so GuiElement:onFocusEnter -> toolTipElement:setText works). -->
+        <Text profile="gsTooltipText" id="settingsHelpBoxText" text="" />
     </GuiElement>
 </GUI>

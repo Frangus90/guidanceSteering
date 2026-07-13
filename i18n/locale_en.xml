@@ -84,7 +84,7 @@
         <text name="guidanceSteering_setting_changeOffsetWidth" text="Increment offset"/>
         <text name="guidanceSteering_setting_cardinals" text="Cardinal point"/>
 
-        <text name="guidanceSteering_setting_strategy" text="Line strategy"/>
+        <text name="guidanceSteering_setting_strategy" text="Line creation"/>
         <text name="guidanceSteering_setting_strategyMethod" text="Line method"/>
         <text name="guidanceSteering_setting_currentTrack" text="Current track"/>
 

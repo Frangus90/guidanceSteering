@@ -55,9 +55,22 @@ function GuidanceSteeringUI:load()
             return
         end
 
-        self.gui:loadProfiles(Utils.getFilename("resources/gui/guiProfiles.xml", self.modDirectory))
+        -- QUARANTINE (FS25): load() runs synchronously inside Mission00.loadMission00Finished,
+        -- which the engine drives from its loadSharedI3DFileFinished callback. An uncaught
+        -- error while building our menu propagates into that engine callback and truncates the
+        -- engine's remaining GUI initialization, permanently breaking base-game frames (shop,
+        -- map) for the rest of the session. Our menu is non-essential, so contain any failure:
+        -- log it, disable the menu, and return cleanly so the engine keeps initializing.
+        -- The HUD/steering/keybind core above this guard stays functional regardless.
+        local ok, err = pcall(function()
+            self.gui:loadProfiles(Utils.getFilename("resources/gui/guiProfiles.xml", self.modDirectory))
+            self:loadMenu()
+        end)
 
-        self:loadMenu()
+        if not ok then
+            self.menuLoadFailed = true
+            Logger.error("GuidanceSteering GUI failed to load; menu disabled: " .. tostring(err))
+        end
     end
 end
 
@@ -82,10 +95,10 @@ end
 ---Action event to toggle the menu.
 function GuidanceSteeringUI:onToggleUI()
     -- FS25 port: the menu isn't ported yet (Phase 4). Inform the user instead of opening it.
-    if GuidanceSteering.PHASE1_NO_UI then
-        Logger.info("GS_SHOW_UI: menu UI is not yet available in the FS25 port.")
+    if GuidanceSteering.PHASE1_NO_UI or self.menuLoadFailed then
+        Logger.info("GS_SHOW_UI: menu UI is not available (menu load failed or disabled).")
         if g_currentMission ~= nil then
-            g_currentMission:showBlinkingWarning("Guidance Steering: menu not yet available in FS25 port", 2000)
+            g_currentMission:showBlinkingWarning("Guidance Steering: menu unavailable (failed to load)", 2000)
         end
         return
     end

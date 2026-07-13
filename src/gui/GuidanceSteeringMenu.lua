@@ -25,7 +25,9 @@ function GuidanceSteeringMenu.new(messageCenter, i18n, inputManager)
     -- required by the inherited setupMenuButtonInfo/menu-button plumbing.
     local self = TabbedMenu.new(nil, GuidanceSteeringMenu_mt)
 
-    self:registerControls(GuidanceSteeringMenu.CONTROLS)
+    -- FS25: GuiElement.registerControls was replaced by exposeControlsAsFields, which
+    -- takes the same CONTROLS table and binds each element id onto self under that name.
+    self:exposeControlsAsFields(GuidanceSteeringMenu.CONTROLS)
 
     self.messageCenter = messageCenter
     self.i18n = i18n
@@ -51,13 +53,15 @@ end
 function GuidanceSteeringMenu:setupPages()
     local alwaysVisiblePredicate = self:makeIsAlwaysVisiblePredicate()
 
-    -- FS25: g_iconsUIFilename (the base-game icon atlas the settings tab borrowed) may be
-    -- unavailable; fall back to our own atlas so the tab always has a valid texture.
+    -- FS25: both tabs use the mod's own atlas. The FS22 code borrowed the base-game icon
+    -- atlas via g_iconsUIFilename, but that global still resolves to the FS22 path
+    -- 'dataS/menu/hud/ui_icons.png' which no longer exists in FS25 (load error + the tab
+    -- renders with wrong UVs). Our atlas (resources/guidanceSteering_1080p.png) carries both
+    -- tab icons at TAB_UV.SETTINGS / TAB_UV.STRATEGY.
     local gsFilename = g_currentMission.guidanceSteering.ui.uiFilename
-    local settingsIconFilename = g_iconsUIFilename or gsFilename
 
     local orderedPages = {
-        { self.pageSettings, alwaysVisiblePredicate, settingsIconFilename, GuidanceSteeringMenu.TAB_UV.SETTINGS },
+        { self.pageSettings, alwaysVisiblePredicate, gsFilename, GuidanceSteeringMenu.TAB_UV.SETTINGS },
         { self.pageStrategy, alwaysVisiblePredicate, gsFilename, GuidanceSteeringMenu.TAB_UV.STRATEGY },
     }
 

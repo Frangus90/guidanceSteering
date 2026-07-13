@@ -10,9 +10,18 @@ GuidanceSteeringStrategyFrame = {}
 
 local GuidanceSteeringStrategyFrame_mt = Class(GuidanceSteeringStrategyFrame, TabbedMenuFrameElement)
 
+---FS25 belt-and-braces: run a per-element GUI setup step under pcall so an unexpected
+---element type or API shape degrades that single step (logged) instead of aborting the
+---whole menu build.
+local function protectedSetup(label, fn)
+    local ok, err = pcall(fn)
+    if not ok then
+        Logger.warning(("GuidanceSteeringStrategyFrame: %s setup failed: %s"):format(label, tostring(err)))
+    end
+end
+
 GuidanceSteeringStrategyFrame.CONTROLS = {
     CONTAINER = "container",
-    STRATEGY = "guidanceSteeringStrategyElement",
     STRATEGY_METHOD = "guidanceSteeringStrategyMethodElement",
     -- Text box
     TRACK_TEXT_INPUT = "guidanceSteeringTrackNameElement",
@@ -46,7 +55,9 @@ function GuidanceSteeringStrategyFrame.new(ui, i18n)
 
     self.lastLoadedTrackId = -1
 
-    self:registerControls(GuidanceSteeringStrategyFrame.CONTROLS)
+    -- FS25: GuiElement.registerControls was replaced by exposeControlsAsFields, which
+    -- takes the same CONTROLS table and binds each element id onto self under that name.
+    self:exposeControlsAsFields(GuidanceSteeringStrategyFrame.CONTROLS)
 
     return self
 end
@@ -59,11 +70,21 @@ function GuidanceSteeringStrategyFrame:copyAttributes(src)
 end
 
 function GuidanceSteeringStrategyFrame:initialize()
-    self.guidanceSteeringStrategyElement:setTexts({
-        self.i18n:getText("guidanceSteering_strategy_abStraight"),
-    })
+    protectedSetup("initialize", function()
+        -- The "Line strategy" selector was removed from the XML (single option, curves never
+        -- shipped); the strategy value is hardcoded to the default in getVehicleTrackData.
+        -- The track-name field is labelled "Track name" by its row, so leave the input empty
+        -- (it is filled from the selected track in displayTrackElements).
+        self.guidanceSteeringTrackNameElement:setText("")
 
-    self.guidanceSteeringTrackNameElement:setText("Track name")
+        -- FS25: scope toggle is a MultiTextOptionElement (state 1 = off, state 2 = on),
+        -- see the settings frame note. Set its two texts here so the toggle displays and
+        -- its buttons cycle state.
+        self.guidanceSteeringScopeFarmIdElement:setTexts({
+            self.i18n:getText("ui_off"),
+            self.i18n:getText("ui_on"),
+        })
+    end)
 
     -- FS25: the SmoothList is data-source driven (setDataSource + reloadData + the
     -- getNumberOfItemsInSection/populateCellForItemInSection callbacks below), replacing
@@ -72,22 +93,24 @@ function GuidanceSteeringStrategyFrame:initialize()
         self.list:setDataSource(self)
     end
 
-    self:build()
+    self:setupHeader()
 end
 
-function GuidanceSteeringStrategyFrame:build()
-    local uiFilename = self.ui.uiFilename
-
-    -- Buttons
-    self.guidanceSteeringCreateTrackButton:setImageFilename(nil, uiFilename)
-    self.guidanceSteeringSaveTrackButton:setImageFilename(nil, uiFilename)
-    self.guidanceSteeringRemoveTrackButton:setImageFilename(nil, uiFilename)
-    self.guidanceSteeringRotateTrackButton:setImageFilename(nil, uiFilename)
-
-    self.guidanceSteeringCreateTrackButton:setImageUVs(nil, GuiUtils.getUVs(GuidanceSteeringStrategyFrame.UVS.CREATE_TRACK))
-    self.guidanceSteeringSaveTrackButton:setImageUVs(nil, GuiUtils.getUVs(GuidanceSteeringStrategyFrame.UVS.SAVE_TRACK))
-    self.guidanceSteeringRemoveTrackButton:setImageUVs(nil, GuiUtils.getUVs(GuidanceSteeringStrategyFrame.UVS.REMOVE_TRACK))
-    self.guidanceSteeringRotateTrackButton:setImageUVs(nil, GuiUtils.getUVs(GuidanceSteeringStrategyFrame.UVS.ROTATE_TRACK))
+---Populate the standard FS25 menu header (icon + title) from the mod's own atlas. Guarded
+---so a missing element/atlas degrades to a bare header instead of aborting the build. The
+---track create/save/remove/rotate controls are plain text buttons now (their FS22 atlas
+---glyphs were dropped), so no per-button image setup is needed.
+function GuidanceSteeringStrategyFrame:setupHeader()
+    protectedSetup("header", function()
+        if self.strategyHeaderText ~= nil then
+            -- Mod proper name (not localized); the tab strip already indicates the page.
+            self.strategyHeaderText:setText("Guidance Steering")
+        end
+        if self.strategyHeaderIcon ~= nil and self.ui ~= nil and self.ui.uiFilename ~= nil then
+            self.strategyHeaderIcon:setImageFilename(self.ui.uiFilename)
+            self.strategyHeaderIcon:setImageUVs(nil, unpack(GuiUtils.getUVs(GuidanceSteeringStrategyFrame.HEADER_ICON_UV)))
+        end
+    end)
 end
 
 function GuidanceSteeringStrategyFrame:onFrameOpen()
@@ -96,16 +119,26 @@ function GuidanceSteeringStrategyFrame:onFrameOpen()
     self.guidanceSteering:subscribe(self)
     self:buildList()
 
+    -- Re-arrange the left control column after the paging clone/open (the base BoxLayout
+    -- auto-invalidates only on its initial onGuiSetupFinished).
+    if self.strategyBoxLayout ~= nil and self.strategyBoxLayout.invalidateLayout ~= nil then
+        self.strategyBoxLayout:invalidateLayout()
+    end
+
     local vehicle = self.ui:getVehicle()
     if vehicle ~= nil then
-        local strategy = vehicle:getGuidanceStrategy()
+        protectedSetup("onFrameOpen strategy", function()
+            local strategy = vehicle:getGuidanceStrategy()
 
-        self.guidanceSteeringStrategyMethodElement:setTexts(strategy:getTexts(self.i18n))
-        self.guidanceSteeringStrategyMethodElement:setState(strategy.id + 1)
-        self:displayMethodElements()
+            self.guidanceSteeringStrategyMethodElement:setTexts(strategy:getTexts(self.i18n))
+            self.guidanceSteeringStrategyMethodElement:setState(strategy.id + 1)
+            self:displayMethodElements()
 
-        self.allowSave = true
+            self.allowSave = true
+        end)
     end
+
+    GuidanceSteering.dumpGuiTree("StrategyFrame", self)
 end
 
 function GuidanceSteeringStrategyFrame:onFrameClose()
@@ -286,7 +319,8 @@ function GuidanceSteeringStrategyFrame:onClickRotateTrack()
 end
 
 function GuidanceSteeringStrategyFrame:getFarmId()
-    local isScoped = self.guidanceSteeringScopeFarmIdElement:getIsChecked()
+    -- FS25: scope toggle is a MultiTextOptionElement (see settings frame note); state 2 = on.
+    local isScoped = self.guidanceSteeringScopeFarmIdElement:getState() == 2
 
     if isScoped then
         local vehicle = self.ui:getVehicle()
@@ -302,7 +336,9 @@ function GuidanceSteeringStrategyFrame:getVehicleTrackData()
     local track = {}
 
     track.name = self.guidanceSteeringTrackNameElement:getText()
-    track.strategy = self.guidanceSteeringStrategyElement:getState()
+    -- Strategy selector removed (only ever had one option, "AB straight" = state 1). Keep the
+    -- serialized default so save/load and the network TrackSaveEvent stay unchanged.
+    track.strategy = 1
     track.method = self.guidanceSteeringStrategyMethodElement:getState()
 
     local vehicle = self.ui:getVehicle()
@@ -457,7 +493,7 @@ function GuidanceSteeringStrategyFrame:displayTrackElements(element)
 
     if track ~= nil then
         self.guidanceSteeringTrackNameElement:setText(track.name)
-        self.guidanceSteeringStrategyElement:setState(track.strategy)
+        -- Strategy selector removed; track.strategy stays at its default and needs no UI element.
         self.guidanceSteeringStrategyMethodElement:setState(track.method)
     end
 end
@@ -476,11 +512,8 @@ function GuidanceSteeringStrategyFrame:displayMethodElements()
     end
 end
 
-GuidanceSteeringStrategyFrame.UVS = {
-    REMOVE_TRACK = { 780, 0, 65, 65 },
-    CREATE_TRACK = { 780, 65, 65, 65 },
-    SAVE_TRACK = { 845, 65, 65, 65 },
-    ROTATE_TRACK = { 325, 65, 65, 65 },
-}
+-- Header icon UV in the mod atlas (resources/guidanceSteering_1080p.png): the tile the
+-- strategy tab uses (GuidanceSteeringMenu.TAB_UV.STRATEGY).
+GuidanceSteeringStrategyFrame.HEADER_ICON_UV = { 845, 0, 65, 65 }
 
 GuidanceSteeringStrategyFrame.L10N_SYMBOL = {}
