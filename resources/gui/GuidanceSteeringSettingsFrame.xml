@@ -115,6 +115,20 @@
                                 maxCharacters="5" imeKeyboardType="normal" onTextChanged="onHeadlandDistanceChanged" />
                 </GuiElement>
 
+                <!-- Headland passes: pass-count selector + Generate action (slice 1). -->
+                <Bitmap profile="gsMultiTextOptionContainer" focusFallthrough="true">
+                    <MultiTextOption profile="fs25_settingsMultiTextOption" id="guidanceSteeringHeadlandPassCountElement"
+                                toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_headlandPasses">
+                        <Text profile="gsSettingsMultiOptionTitle" name="label" text="$l10n_guidanceSteering_setting_headlandPasses" />
+                    </MultiTextOption>
+                </Bitmap>
+
+                <GuiElement profile="gsButtonRow">
+                    <ThreePartBitmap profile="gsButtonPill" position="0px 5px" size="300px 45px" />
+                    <Button profile="gsSettingsButtonWide" position="0px 5px" size="300px 45px" text="$l10n_guidanceSteering_setting_generateHeadland" onClick="onClickGenerateHeadland" id="guidanceSteeringGenerateHeadlandButton"
+                                toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_generateHeadland" />
+                </GuiElement>
+
                 <!-- ============ Width ============ -->
                 <Text profile="gsSectionHeader" text="$l10n_guidanceSteering_setting_width" />
 

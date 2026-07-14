@@ -48,6 +48,7 @@ source(Utils.getFilename("src/misc/states/TurningState.lua", directory))
 
 source(Utils.getFilename("src/misc/MultiPurposeActionEvent.lua", directory))
 source(Utils.getFilename("src/misc/ABPoint.lua", directory))
+source(Utils.getFilename("src/misc/HeadlandPasses.lua", directory))
 --source(Utils.getFilename("src/misc/LinkedList.lua", directory))
 
 source(Utils.getFilename("src/strategies/ABStrategy.lua", directory))

@@ -118,6 +118,16 @@
         <text name="guidanceSteering_setting_headlandDistance" text="Headland act distance"/>
         <text name="guidanceSteering_tooltip_headlandDistance" text="Distance in meters to act before approaching the headland."/>
 
+        <text name="guidanceSteering_setting_headlandPasses" text="Headland passes"/>
+        <text name="guidanceSteering_tooltip_headlandPasses" text="Number of passes to generate around the field boundary."/>
+        <text name="guidanceSteering_setting_generateHeadland" text="Generate headland"/>
+        <text name="guidanceSteering_tooltip_generateHeadland" text="Detect the current field boundary and draw the headland passes around it."/>
+        <text name="guidanceSteering_info_headlandDetecting" text="Detecting field boundary..."/>
+        <text name="guidanceSteering_info_headlandCreated" text="Created %d headland pass(es)."/>
+        <text name="guidanceSteering_warning_headlandNoField" text="No field boundary found. Stand on a field and try again."/>
+        <text name="guidanceSteering_warning_headlandTooSmall" text="Field too small for the chosen headland width."/>
+        <text name="guidanceSteering_warning_headlandUnavailable" text="Field boundary detection is unavailable."/>
+
         <text name="guidanceSteering_setting_header_lines" text="Lines"/>
         <text name="guidanceSteering_setting_showLinesAsDots" text="Show as dots"/>
         <text name="guidanceSteering_tooltip_showLinesAsDots" text="Render the lines with dots, when turned off normal lines are displayed."/>

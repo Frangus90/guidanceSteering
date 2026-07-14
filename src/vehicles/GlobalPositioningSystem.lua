@@ -61,6 +61,7 @@ function GlobalPositioningSystem.registerFunctions(vehicleType)
     SpecializationUtil.registerFunction(vehicleType, "onSteeringStateChanged", GlobalPositioningSystem.onSteeringStateChanged)
     SpecializationUtil.registerFunction(vehicleType, "onHeadlandStateChanged", GlobalPositioningSystem.onHeadlandStateChanged)
     SpecializationUtil.registerFunction(vehicleType, "setIsGuidanceSteeringEnabled", GlobalPositioningSystem.setIsGuidanceSteeringEnabled)
+    SpecializationUtil.registerFunction(vehicleType, "generateHeadlandPasses", GlobalPositioningSystem.generateHeadlandPasses)
 end
 
 function GlobalPositioningSystem.registerOverwrittenFunctions(vehicleType)
@@ -281,6 +282,9 @@ function GlobalPositioningSystem:onLoad(savegame)
     GlobalPositioningSystem.registerMultiPurposeActionEvents(self)
 
     spec.stateMachine = FSMContext.createGuidanceStateMachine(self)
+
+    -- Headland passes (parallel geometry producer; slice 1 = generate + draw only).
+    spec.headland = HeadlandPasses:new(self)
 end
 
 function GlobalPositioningSystem:onPostLoad(savegame)
@@ -424,6 +428,11 @@ function GlobalPositioningSystem:onDelete()
 
     -- Cleanup current strategy
     spec.lineStrategy:delete()
+
+    -- Cleanup headland passes
+    if spec.headland ~= nil then
+        spec.headland:delete()
+    end
 
     -- Delete guidance nodes
     delete(spec.guidanceNode)
@@ -576,6 +585,11 @@ function GlobalPositioningSystem:onUpdate(dt)
 
     spec.lineStrategy:update(dt, data, guidanceNode, lastSpeed)
 
+    -- Pump the async headland-boundary detection (no-op unless a detection is running).
+    if spec.headland ~= nil then
+        spec.headland:update(dt)
+    end
+
     local drivingDirection = self:getDrivingDirection()
     local guidanceSteeringIsActive = spec.guidanceSteeringIsActive
     local x, _, z, driveDirX, driveDirZ = unpack(data.driveTarget)
@@ -648,6 +662,10 @@ function GlobalPositioningSystem:onDraw()
     if g_currentMission.guidanceSteering:isShowGuidanceLinesEnabled() then
         local spec = self.spec_globalPositioningSystem
         spec.lineStrategy:draw(spec.guidanceData, spec.guidanceSteeringIsActive, spec.autoInvertOffset)
+
+        if spec.headland ~= nil then
+            spec.headland:draw()
+        end
     end
 end
 
@@ -955,6 +973,16 @@ function GlobalPositioningSystem:setIsGuidanceSteeringEnabled(isEnabled)
         if actionEvent ~= nil then
             g_inputBinding:setActionEventTextVisibility(actionEvent.actionEventId, isEnabled)
         end
+    end
+end
+
+---Kicks off headland-pass generation for this vehicle (slice 1: detect + generate + draw).
+---Single-player only; no network event.
+---@param passCount number desired number of passes
+function GlobalPositioningSystem:generateHeadlandPasses(passCount)
+    local spec = self.spec_globalPositioningSystem
+    if spec.headland ~= nil then
+        spec.headland:startDetection(passCount)
     end
 end
 

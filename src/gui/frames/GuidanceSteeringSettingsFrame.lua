@@ -57,6 +57,8 @@ GuidanceSteeringSettingsFrame.CONTROLS = {
 
     HEADLAND_MODE = "guidanceSteeringHeadlandModeElement",
     HEADLAND_DISTANCE = "guidanceSteeringHeadlandDistanceElement",
+    HEADLAND_PASS_COUNT = "guidanceSteeringHeadlandPassCountElement",
+    GENERATE_HEADLAND = "guidanceSteeringGenerateHeadlandButton",
 
     TOGGLE_SHOW_LINES = "guidanceSteeringShowLinesElement",
     OFFSET_LINES = "guidanceSteeringLinesOffsetElement",
@@ -109,6 +111,13 @@ function GuidanceSteeringSettingsFrame:initialize()
         end
 
         self.guidanceSteeringHeadlandModeElement:setTexts(headlandModes)
+
+        -- Headland-pass count selector: "1".."MAX_PASS_COUNT" (state is 1-indexed = the count).
+        local passCounts = {}
+        for i = 1, HeadlandPasses.MAX_PASS_COUNT do
+            table.insert(passCounts, tostring(i))
+        end
+        self.guidanceSteeringHeadlandPassCountElement:setTexts(passCounts)
 
         -- Two-entry texts for the boolean toggles (state 1 = off, state 2 = on). Must be set
         -- before onFrameOpen's setChecked, otherwise setState(STATE_ON) clamps to 1 (no texts).
@@ -184,6 +193,10 @@ function GuidanceSteeringSettingsFrame:onFrameOpen()
             local currentHeadlandActDistance = spec.headlandActDistance
             self.guidanceSteeringHeadlandModeElement:setState(spec.headlandMode)
             self.guidanceSteeringHeadlandDistanceElement:setText(tostring(currentHeadlandActDistance))
+
+            if spec.headland ~= nil then
+                self.guidanceSteeringHeadlandPassCountElement:setState(spec.headland.passCount)
+            end
 
             self.allowSave = true
         end)
@@ -340,6 +353,18 @@ function GuidanceSteeringSettingsFrame:onHeadlandDistanceChanged(_, text)
             self.guidanceSteeringHeadlandDistanceElement:setText(tostring(lastDistance))
         end
     end
+end
+
+---Slice 1 headland trigger: read the pass-count selector and kick off generation on the
+---current vehicle. The count selector state is 1-indexed and equals the pass count.
+function GuidanceSteeringSettingsFrame:onClickGenerateHeadland()
+    local vehicle = self.ui:getVehicle()
+    if vehicle == nil then
+        return
+    end
+
+    local count = self.guidanceSteeringHeadlandPassCountElement:getState()
+    vehicle:generateHeadlandPasses(count)
 end
 
 function GuidanceSteeringSettingsFrame:getUnitLength(meters)
