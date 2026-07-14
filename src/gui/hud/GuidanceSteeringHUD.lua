@@ -285,11 +285,18 @@ function GuidanceSteeringHUD:onDraw(speedMeterDisplay)
         return
     end
 
-    self.laneText = self:getLaneText(spec.guidanceData.currentLane or 0)
-    -- spec.lineStrategy is created in GlobalPositioningSystem:onLoad and swapped by
-    -- setGuidanceStrategy; nil-guard it in case the HUD draws during a transient state.
-    local strategy = spec.lineStrategy
-    self.methodText = strategy ~= nil and self:getMethodText(strategy.id) or ""
+    -- When headland is the active guidance source, show "HL" + the active pass number instead
+    -- of the AB method/lane readout (they are mutually exclusive sources).
+    if spec.headland ~= nil and spec.headland:isActive() then
+        self.methodText = "HL"
+        self.laneText = tostring(spec.headland:getActivePassNumber())
+    else
+        self.laneText = self:getLaneText(spec.guidanceData.currentLane or 0)
+        -- spec.lineStrategy is created in GlobalPositioningSystem:onLoad and swapped by
+        -- setGuidanceStrategy; nil-guard it in case the HUD draws during a transient state.
+        local strategy = spec.lineStrategy
+        self.methodText = strategy ~= nil and self:getMethodText(strategy.id) or ""
+    end
     self:updateIconState(spec)
 
     local layout = self:computeLayout()

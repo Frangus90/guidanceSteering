@@ -106,12 +106,22 @@ For pass `i` in `1..N`, inset the boundary inward by `(i - 0.5) * workingWidth`:
 3. New vertex = intersection of consecutive offset edge-lines
    (`MathUtil.getLineLineIntersection2D(x1,z1,d1x,d1z, x2,z2,d2x,d2z)` → `hit,f1`;
    point = `p1 + f1·d1`). Parallel/collinear edges fall back to the offset point.
-4. **Collapse guard (decision #4-compatible):** after building a loop, if its
+4. **Self-intersection cull (slice-2 fix):** after offsetting, a boundary corner
+   sharper than the inset radius makes the two offset edges meeting there cross,
+   enclosing a small reversed "bowtie" sub-loop (the notch seen in-game).
+   `removeSelfIntersections` scans every pair of non-adjacent edges for an interior
+   crossing; on the first, the crossing point splits the ring into two runs — it
+   drops the SHORTER run (the artifact; the field outline is always the longer run)
+   and splices the crossing point in, then rescans until clean. O(n²) per rescan,
+   once per generation. Runs before the collapse guard so area is measured on the
+   cleaned ring.
+5. **Collapse guard (decision #4-compatible):** after building a loop, if its
    signed-area sign flipped vs. the boundary or its area is below `width²`, the
    inset exceeded the field — **drop that loop and stop** (inner loops are
-   worse). Degenerate corners on concave fields are left naive by design.
+   worse).
 
-No island routing, no corner rounding — deliberately.
+No island routing. Corners are lightly rounded by the densify+Chaikin smoothing
+pass (SMOOTH_* constants) and de-notched by the self-intersection cull above.
 
 ### Drawing
 
@@ -148,12 +158,45 @@ detection completes and N green/white loops draw around the field boundary.
   boundary; a too-small field yields fewer/zero inner loops without error;
   off-field trigger warns and draws nothing. Player can steer manually along
   them. Ships as a usable feature on its own.
-- **Slice 2 — steer along active loop + AB-style inward lane switch.** Add a
-  waypoint follower: nearest-point + look-ahead on `loops[activeLoopIndex]` →
-  `worldToLocal` → `DriveUtil.driveToPoint` (reused) → accelerate as
-  `guideSteering` does. Advance `activeLoopIndex` inward when the vehicle crosses
-  the width threshold into the next loop (decision #2). Engage from the existing
-  steering toggle when a headland course is active instead of the AB path.
+- **Slice 2 — steer along active loop + AB-style inward lane switch. IMPLEMENTED.**
+  As built (may deviate slightly from the sketch above):
+  - **Boundary smoothing (before insetting).** `smoothBoundary` densifies the raw
+    boundary to `SMOOTH_SPACING` (3 m) then runs `SMOOTH_ITERATIONS` (2) Chaikin
+    corner-cutting passes. Densify-first keeps rounding LOCAL to real corners
+    (~1-2 m radius) instead of bevelling whole edges; 90° field corners stay
+    recognisably square. All inset loops are generated from the smoothed boundary,
+    so corners are consistent across passes. Point count grows ~4× (e.g. a sparse
+    boundary → hundreds of points/loop); logged as `boundary=<raw>-><smoothed> pts`.
+  - **Follower (pure pursuit).** `HeadlandPasses:updateSteering` (server only):
+    `nearestOnLoop` (snap to nearest point on the active loop) → pick traversal
+    direction from the sign of `vehicleForward · segmentDir` (works both ways round
+    the loop, engages from wherever the vehicle points) → `walkAlongLoop` a
+    look-ahead distance → `worldToLocal(guidanceNode)` → **reused**
+    `DriveUtil.driveToPoint` → speed-limit + `DriveUtil.accelerateInDirection`
+    exactly as `guideSteering` (user owns throttle). Look-ahead =
+    `clamp(5 + 0.25·speed_kmh, 5, 12)` m (base matches AB `TARGET_STEP`).
+  - **Branch point (clean if/else, no interleave).** `GlobalPositioningSystem:onUpdate`:
+    `if spec.headland:isActive() then headland:updateSteering() else stateMachine:update() end`.
+    `onDraw` mirrors it (draw headland XOR AB line).
+  - **Bidirectional lane switch.** `updateActiveLoop` (runs while moving, client+server
+    in SP): set `activeLoopIndex` to whichever loop the vehicle is currently nearest,
+    in EITHER direction (inner or outer). Because adjacent loops sit exactly one width
+    apart, their midline is at half a width — "nearest loop" is the same half-width
+    threshold AB uses via `MathUtil.round(lineAlpha)`. **Not advance-only** (revised
+    after in-game feedback): crossing a midline never locks the vehicle out of an outer
+    pass — it can move back outward freely. A hysteresis dead-band of
+    `HYSTERESIS_FRACTION` (0.1) of a width around the midline keeps the choice stable
+    while the vehicle straddles it, so the active loop does not flap on the boundary.
+  - **Exclusivity.** `self.active` is the single source-of-truth flag. Generating a
+    headland (loops>0) sets it true (any AB track stays stored but inactive).
+    Creating/loading an AB track funnels through `onCreateGuidanceData`, which calls
+    `headland:deactivate()` (active=false, loops cleared, state→IDLE). The
+    steering-enable gate accepts headland OR AB as a valid source and keeps the
+    "create or load a track first" warning only when NEITHER exists.
+  - **HUD.** Shows `HL` + active pass number in place of the AB method/lane readout
+    while headland is the active source.
+  - **Diagnostics.** `Logger.info` on steering-engage (loop index + direction) and
+    on active-loop advance (from→to + the two nearest-distances).
   *Verify:* vehicle auto-steers around the active loop (player throttles), stays
   within a lane-width tolerance, rounds gentle corners without oscillation, and
   switches to the next inner loop on the width-threshold crossing.

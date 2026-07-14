@@ -634,6 +634,12 @@ function GlobalPositioningSystem:onUpdate(dt)
         if data.isReverseDriving then
             data.snapDirectionMultiplier = -data.snapDirectionMultiplier
         end
+
+        -- Headland lane switch: while moving, advance the active loop inward AB-style. Runs on
+        -- client+server (SP); harmless no-op unless headland is the active guidance source.
+        if spec.headland ~= nil then
+            spec.headland:updateActiveLoop(self)
+        end
     end
 
     if not self.isServer then
@@ -641,7 +647,12 @@ function GlobalPositioningSystem:onUpdate(dt)
     end
 
     if guidanceSteeringIsActive then
-        spec.stateMachine:update(dt)
+        -- Exclusive guidance source: headland loop follower OR the AB state machine, never both.
+        if spec.headland ~= nil and spec.headland:isActive() then
+            spec.headland:updateSteering(self, dt)
+        else
+            spec.stateMachine:update(dt)
+        end
     end
 end
 
@@ -661,10 +672,13 @@ function GlobalPositioningSystem:onDraw()
 
     if g_currentMission.guidanceSteering:isShowGuidanceLinesEnabled() then
         local spec = self.spec_globalPositioningSystem
-        spec.lineStrategy:draw(spec.guidanceData, spec.guidanceSteeringIsActive, spec.autoInvertOffset)
 
-        if spec.headland ~= nil then
-            spec.headland:draw()
+        -- Draw exactly one guidance source so the two can't visually overlap. Headland takes
+        -- priority while it is the active source; otherwise draw the AB line.
+        if spec.headland ~= nil and spec.headland:isActive() then
+            spec.headland:draw(spec.guidanceSteeringIsActive)
+        else
+            spec.lineStrategy:draw(spec.guidanceData, spec.guidanceSteeringIsActive, spec.autoInvertOffset)
         end
     end
 end
@@ -894,6 +908,12 @@ function GlobalPositioningSystem:onCreateGuidanceData()
 
     local data = spec.guidanceData
     data.isCreated = true
+
+    -- Exclusivity: an AB track just became the active source (Set A/B or Load track both funnel
+    -- here via updateGuidanceData(isCreation=true)); drop headland so the two never mix.
+    if spec.headland ~= nil then
+        spec.headland:deactivate()
+    end
 end
 
 function GlobalPositioningSystem:onResetGuidanceData()
@@ -935,6 +955,11 @@ end
 
 function GlobalPositioningSystem:onSteeringStateChanged(isActive)
     local spec = self.spec_globalPositioningSystem
+
+    -- Re-arm the headland engage diagnostic on every steering on/off transition.
+    if spec.headland ~= nil then
+        spec.headland.hasLoggedEngage = false
+    end
 
     if self.isServer then
         spec.stateMachine:reset()
@@ -1162,7 +1187,10 @@ function GlobalPositioningSystem.actionEventEnableSteering(self, actionName, inp
         return
     end
 
-    if not spec.guidanceData.isCreated then
+    -- A generated headland course is a valid guidance source on its own; only fall back to the
+    -- "create or load a track first" gate when NEITHER a headland nor an AB track exists.
+    local headlandActive = spec.headland ~= nil and spec.headland:isActive()
+    if not headlandActive and not spec.guidanceData.isCreated then
         g_currentMission:showBlinkingWarning(g_i18n:getText("guidanceSteering_warning_createTrackFirst"), 2000)
         return
     end
