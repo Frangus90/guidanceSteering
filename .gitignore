@@ -47,3 +47,6 @@ fabric.properties
 
 # FS25 modding skill reference library (third-party, 2000+ files - keeps the @ file picker usable)
 .claude/skills/fs25-modding/references/
+
+# Local Claude Code config (CLAUDE.md, settings, skills) - not tracked in repo
+.claude/
