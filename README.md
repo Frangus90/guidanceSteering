@@ -1,33 +1,52 @@
-# Guidance Steering for Farming Simulator 22 (GPS)
+# Guidance Steering for Farming Simulator 25 (unofficial FS25 port)
 
-![For Farming Simulator 22](https://img.shields.io/badge/Farming%20Simulator-22-10BEFF.svg) [![Releases](https://img.shields.io/github/release/stijnwop/guidanceSteering.svg)](https://github.com/stijnwop/guidanceSteering/releases)
+![For Farming Simulator 25](https://img.shields.io/badge/Farming%20Simulator-25-10BEFF.svg)
 
-## Publishing
-Only Wopster is allowed to publish any of this code as a mod to any mod site, or file sharing site. The code is open for your own use, but give credit where due. I will not accept support for any 'version' of Guidance Steering that is obtained from a sketchy mod page. Versioning is controlled by me and not by any other page. This confuses people and really holds back the development which results in no fun for me!
+## This is NOT my mod
 
-## Warning!
-Please be aware that this is a ***DEVELOPMENT VERSION***!
-* The development version can break the game or your savegame!
-* The development version doesn´t support the full feature package yet!
+This repository is an **unofficial, unaffiliated port** of
+[Guidance Steering](https://github.com/stijnwop/guidanceSteering) from Farming
+Simulator 22 to Farming Simulator 25. All credit for the original design,
+code, and feature set goes to **[Wopster](https://github.com/stijnwop)** and
+the original project's contributors. This port would not exist without their
+work.
 
-#### Multiplayer
-This version should also work in Multiplayer, but keep in mind it might have bugs.
+## This port will not be released anywhere
 
-## Installation / Releases
-Currently the development version is only available via GitHub. When a official release version is avaiable you can download the latest version from the [release section](https://github.com/stijnwop/guidanceSteering/releases).
+Per Wopster's original terms below, **only Wopster is allowed to publish this
+mod** — to ModHub, any mod site, or any file-sharing site. This fork will
+**not** be uploaded anywhere and there are **no binary downloads**. If you
+want to use this FS25 port, you have to build it yourself from source (see
+below). If you fork or redistribute the source, **you must keep this
+attribution to Wopster intact.**
 
-> _Please note: if there's no release version available it means there's no official release yet._
+## Building it yourself
 
-All official releases will be avaiable at the offical Farming Simulator ModHub.
+1. Clone this repository.
+2. Run `scripts/deploy-fs25.ps1` in PowerShell. It packages the mod into
+   `FS25_guidanceSteering.zip` and places it in your FS25 mods folder.
+3. The script's target mods path is set for the original developer's machine
+   — open it and adjust the destination path to your own
+   `...\Documents\My Games\FarmingSimulator2025\mods` directory before running.
 
-For installing the release:
+> **Do not zip the mod manually with `Compress-Archive`.** The zip entries
+> must use forward-slash paths; backslash entries make the mod load silently
+> broken in-game. The deploy script handles this correctly — always use it.
 
-Windows: Copy the `FS22_guidanceSteering_dev.zip` into your `My Games\FarmingSimulator2022\mods` directory.
+## What it does
 
-## Developers version
-To quickly build a zip of the developer version without the needed extras, use the `zip.bat` included in this repository.
+Guidance Steering gives you free, in-game GPS-style guidance: create an AB
+line, an A+heading line, or an A+direction line, then let GS steer while you
+control speed. Tracks can be saved and loaded per vehicle or per farm. This
+FS25 port adds a new **headland passes** feature: GS detects the current
+field's outer boundary and generates N concentric passes hugging it, so you
+can guide along the headland the same way you guide an AB line.
 
-> _Please note: the batch file requires an installed version of 7-Zip or Winrar_
+## State of the port
+
+Working: core steering, HUD, GUI menu, saved tracks, headland passes (v1).
+This is **single-player only** — multiplayer has not been tested and is out
+of scope for this port.
 
 ## Documentation
 
@@ -49,8 +68,6 @@ The AB mode requires two points (A and B) in order to calculate the angle to gen
 
 First, select the A+B method in the menu.
 
-![Image of AB method](.github/images/line_method_ab.png)
-
 1. Drive to the location where you want to setup your lines.
 2. Hit `Alt + E` once (or use the menu) to reset the AB line creation.
 3. Hit `Alt + E` once more (or use the menu) to set point A.
@@ -61,22 +78,18 @@ The A+Heading mode requires only point A and a cardinal heading to generate the 
 
 First select the A+Heading method in the menu.
 
-![Image of A+Heading method](.github/images/line_method_a_heading.png)
-
 1. Drive to the location where you want to setup your lines.
 2. Hit `Alt + E` once (or use the menu) in order to reset the A+Heading creation.
 3. Hit `Alt + E` once more (or use the menu) in order to set point A.
 4. Enter the desired cardinal heading in degrees. For example, enter 0 degrees for North or 90 degrees for East.
 5. Press 'Set Cardinal' to create the guidance line.
-  
+
 > Tip: If most of your fields are North-South or East-West, create one A+Heading track and use rotate track (`Alt + End`) to rotate the track back and forth between North-South and East-West.
 
 #### A+Direction line
 The A+Direction mode requires only Point A and it takes the cardinal heading from the direction the vehicle is pointing.
 
 First select the A+Direction method in the menu.
-
-![Image of A+Direction method](.github/images/line_method_a_direction.png)
 
 1. Drive to the location where you want to setup your lines.
 2. Point the vehicle in the direction desired for the guidance line and hit `Alt + E` once (or use the menu) to set the line.
@@ -143,8 +156,15 @@ If you want the same effect on your mod vehicles you can add the configuration y
 </globalPositioningSystemConfigurations>
 ~~~
 
+## Publishing (original terms, unchanged)
+Only Wopster is allowed to publish any of this code as a mod to any mod site, or file sharing site. The code is open for your own use, but give credit where due. I will not accept support for any 'version' of Guidance Steering that is obtained from a sketchy mod page. Versioning is controlled by me and not by any other page. This confuses people and really holds back the development which results in no fun for me!
+
 ## Copyright
 Copyright (c) 2022 [Wopster](https://github.com/stijnwop).
 All rights reserved.
 
 Special thanks to workflowsen for creating the icon!
+
+Translations in this port are carried over from the original project and are
+currently unmaintained here — only the English locale is kept up to date for
+this FS25 port.
