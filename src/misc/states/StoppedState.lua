@@ -44,8 +44,9 @@ end
 function StoppedState:update(dt)
     StoppedState:superClass().update(self, dt)
 
-    -- Force zero accelerating because the steering still can be active.
-    DriveUtil.accelerateInDirection(self.object, 0, dt, true)
-
+    -- Headland STOP mode. onEntry already turned off cruise control and toggled Guidance Steering
+    -- off, so the vehicle coasts to a stop under the player's control. We no longer force-brake via
+    -- WheelsUtil: the vehicle now stays player-controlled and the base game owns the wheels, so a
+    -- manual brake here would fight base physics.
     return FSM.ANY_STATE
 end

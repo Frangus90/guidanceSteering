@@ -539,8 +539,8 @@ end
 ---Steers the vehicle along the active loop (server only; mirrors DriveUtil.guideSteering's
 ---contract). Pure-pursuit: snap to the nearest point on the active loop, pick the traversal
 ---direction matching the vehicle's current heading (works both ways around the loop), walk a
----look-ahead distance to a target point, then hand off to the SAME DriveUtil.driveToPoint and
----acceleration path the AB follower uses. The user still owns the throttle (spec.axisForward).
+---look-ahead distance to a target point, then hand off to the SAME DriveUtil.driveToPoint the AB
+---follower uses and publish the resulting angle via spec.steeringValue. The user owns the throttle.
 ---@param vehicle table
 ---@param dt number
 function HeadlandPasses:updateSteering(vehicle, dt)
@@ -582,16 +582,17 @@ function HeadlandPasses:updateSteering(vehicle, dt)
     local localX, _, localZ = worldToLocal(node, targetX, py, targetZ)
     DriveUtil.driveToPoint(vehicle, dt, localX, localZ)
 
-    -- Lock max speed to the working tool, same as DriveUtil.guideSteering, then apply the
-    -- player's throttle through the guidance path.
+    -- Publish the computed steering angle for inj_updateVehiclePhysics to inject as axisSide.
+    -- Throttle stays with the player (or base-game cruise control); GS only steers.
+    spec.steeringValue = vehicle.rotatedTime
+
+    -- Lock max speed to the working tool, same as DriveUtil.guideSteering.
     local speed = vehicle:getSpeedLimit(true)
     local drivable_spec = vehicle:guidanceSteering_getSpecTable("drivable")
     if drivable_spec.cruiseControl.state == Drivable.CRUISECONTROL_STATE_ACTIVE then
         speed = math.min(speed, drivable_spec.cruiseControl.speed)
     end
     vehicle:getMotor():setSpeedLimit(speed)
-
-    DriveUtil.accelerateInDirection(vehicle, spec.axisForward, dt, false)
 end
 
 ---Converts the engine's {x,z} boundary line into an {x,y,z} polygon, dropping the repeated

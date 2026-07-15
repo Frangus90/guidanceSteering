@@ -75,6 +75,10 @@ function DriveUtil.guideSteering(vehicle, dt)
     local pointX, _, pointZ = worldToLocal(spec.guidanceNode, targetX, driveY, targetZ)
     DriveUtil.driveToPoint(vehicle, dt, pointX, pointZ)
 
+    -- Publish the computed steering angle for inj_updateVehiclePhysics to inject as axisSide.
+    -- Throttle stays with the player (or base-game cruise control); GS only steers.
+    spec.steeringValue = vehicle.rotatedTime
+
     -- lock max speed to working tool
     local speed = vehicle:getSpeedLimit(true)
     local drivable_spec = vehicle:guidanceSteering_getSpecTable("drivable")
@@ -83,8 +87,6 @@ function DriveUtil.guideSteering(vehicle, dt)
     end
 
     vehicle:getMotor():setSpeedLimit(speed)
-
-    DriveUtil.accelerateInDirection(vehicle, spec.axisForward, dt, false)
 end
 
 ---Drives the given vehicle to the point.
@@ -165,38 +167,3 @@ function DriveUtil.driveInDirection(vehicle, dt, steeringAngleLimit, movingDirec
     end
 end
 
----Accelerates the given vehicle.
----@param vehicle table
----@param axisForward number
----@param dt number
----@param forceBrake boolean
-function DriveUtil.accelerateInDirection(vehicle, axisForward, dt, forceBrake)
-    local spec = vehicle.spec_drivable
-    local acceleration = 0
-
-    if vehicle:getIsMotorStarted()
-            and vehicle:getMotorStartTime() <= g_currentMission.time then
-        acceleration = axisForward
-        if math.abs(acceleration) > 0 then
-            vehicle:setCruiseControlState(Drivable.CRUISECONTROL_STATE_OFF)
-        end
-        if spec.cruiseControl.state ~= Drivable.CRUISECONTROL_STATE_OFF then
-            acceleration = 1.0
-        end
-    end
-
-    if not vehicle:getCanMotorRun() then
-        acceleration = 0
-        if vehicle:getIsMotorStarted() then
-            vehicle:stopMotor()
-        end
-    end
-
-    if vehicle.finishedFirstUpdate then
-        if vehicle.spec_wheels ~= nil then
-            WheelsUtil.updateWheelsPhysics(vehicle, dt, vehicle.lastSpeedReal * vehicle.movingDirection, acceleration, forceBrake, g_currentMission.missionInfo.stopAndGoBraking)
-        end
-    end
-
-    return acceleration
-end

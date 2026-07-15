@@ -65,7 +65,7 @@ function GlobalPositioningSystem.registerFunctions(vehicleType)
 end
 
 function GlobalPositioningSystem.registerOverwrittenFunctions(vehicleType)
-    SpecializationUtil.registerOverwrittenFunction(vehicleType, "getIsVehicleControlledByPlayer", GlobalPositioningSystem.inj_getIsVehicleControlledByPlayer)
+    SpecializationUtil.registerOverwrittenFunction(vehicleType, "updateVehiclePhysics", GlobalPositioningSystem.inj_updateVehiclePhysics)
     SpecializationUtil.registerOverwrittenFunction(vehicleType, "getCanStartAIVehicle", GlobalPositioningSystem.inj_getCanStartAIVehicle)
     SpecializationUtil.registerOverwrittenFunction(vehicleType, "getShowAIToggleActionEvent", GlobalPositioningSystem.inj_getCanStartAIVehicle)
     SpecializationUtil.registerOverwrittenFunction(vehicleType, "onDynamicallyPartI3DLoaded", GlobalPositioningSystem.inj_onDynamicallyPartI3DLoaded)
@@ -181,6 +181,10 @@ function GlobalPositioningSystem:onLoad(savegame)
     spec.axisBrake = 0
     spec.axisForward = 0
     spec.axisForwardSent = 0
+
+    -- Desired steering angle (rotTime domain) that inj_updateVehiclePhysics injects as axisSide
+    -- while Guidance Steering is engaged. Written each frame by the AB follower / headland follower.
+    spec.steeringValue = 0
 
     -- Index is deprecated.
     XMLUtil.checkDeprecatedXMLElements(self.xmlFile, self.configFileName, "vehicle.guidanceSteering#index", "vehicle.guidanceSteering#node")
@@ -683,13 +687,40 @@ function GlobalPositioningSystem:onDraw()
     end
 end
 
-function GlobalPositioningSystem.inj_getIsVehicleControlledByPlayer(vehicle, superFunc)
+---Injects Guidance Steering's desired steering angle without taking the vehicle away from the
+---player. This mirrors the base game's own steering assist (AIAutomaticSteering:updateVehiclePhysics):
+---the vehicle stays player-controlled (getIsVehicleControlledByPlayer stays true), so base Drivable
+---keeps running the normal physics path every frame with the PLAYER's throttle (axisForward). We only
+---replace axisSide, derived from spec.steeringValue (a rotTime value the AB/headland follower computes),
+---then hand the unchanged axisForward to superFunc. Throttle, gearbox, direction change and reverser
+---all stay on their normal player code paths -- the user drives the speed manually or with cruise
+---control, exactly as the design contract requires.
+---
+---This replaces the old FS22-era takeover (getIsVehicleControlledByPlayer=false + a manual
+---WheelsUtil.updateWheelsPhysics call feeding spec.axisForward as the acceleration). In FS25 the base
+---player drive path -- and the ONLY call to updateVehiclePhysics -- is gated behind
+---getIsVehicleControlledByPlayer(); forcing it false meant the base game never drove the wheels, so the
+---mod re-drove them with the FS22 assumption that the acceleration sign IS the world direction. FS25's
+---WheelsUtil now multiplies acceleration by reverserDirection/currentDirection, so that hand-fed
+---throttle no longer mapped to the world direction and the vehicle locked to one direction ("only
+---backward, forward impossible").
+function GlobalPositioningSystem.inj_updateVehiclePhysics(vehicle, superFunc, axisForward, axisSide, doHandbrake, dt)
     local spec = vehicle.spec_globalPositioningSystem
-    if spec ~= nil and spec.guidanceSteeringIsActive then
-        return false
+    if spec ~= nil and spec.guidanceSteeringIsActive and spec.steeringValue ~= nil then
+        local steeringValue = spec.steeringValue
+        if steeringValue < 0 then
+            axisSide = -steeringValue / vehicle.maxRotTime
+        else
+            axisSide = steeringValue / vehicle.minRotTime
+        end
+
+        local acceleration = superFunc(vehicle, axisForward, axisSide, doHandbrake, dt)
+        vehicle.rotatedTime = steeringValue
+        vehicle.spec_drivable.axisSide = axisSide
+        return acceleration
     end
 
-    return superFunc(vehicle)
+    return superFunc(vehicle, axisForward, axisSide, doHandbrake, dt)
 end
 
 function GlobalPositioningSystem.inj_getCanStartAIVehicle(vehicle, superFunc)
