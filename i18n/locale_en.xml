@@ -128,6 +128,10 @@
         <text name="guidanceSteering_warning_headlandTooSmall" text="Field too small for the chosen headland width."/>
         <text name="guidanceSteering_warning_headlandUnavailable" text="Field boundary detection is unavailable."/>
 
+        <text name="guidanceSteering_setting_header_hud" text="HUD"/>
+        <text name="guidanceSteering_setting_resetHudPosition" text="Reset HUD position"/>
+        <text name="guidanceSteering_tooltip_resetHudPosition" text="Move the Guidance Steering HUD back to its default spot. Drag it with the left mouse button while the mouse cursor is shown."/>
+
         <text name="guidanceSteering_setting_header_lines" text="Lines"/>
         <text name="guidanceSteering_setting_showLinesAsDots" text="Show as dots"/>
         <text name="guidanceSteering_tooltip_showLinesAsDots" text="Render the lines with dots, when turned off normal lines are displayed."/>

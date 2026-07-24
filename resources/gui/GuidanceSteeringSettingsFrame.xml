@@ -175,6 +175,15 @@
                     <Button profile="gsSettingsButtonWide" position="810px 5px" text="$l10n_guidanceSteering_setting_invertOffset" onClick="onClickInvertOffset" id="guidanceSteeringInvertOffsetButton" />
                 </GuiElement>
 
+                <!-- ============ HUD ============ -->
+                <Text profile="gsSectionHeader" text="$l10n_guidanceSteering_setting_header_hud" />
+
+                <GuiElement profile="gsButtonRow">
+                    <ThreePartBitmap profile="gsButtonPill" position="0px 5px" size="300px 45px" />
+                    <Button profile="gsSettingsButtonWide" position="0px 5px" size="300px 45px" text="$l10n_guidanceSteering_setting_resetHudPosition" onClick="onClickResetHudPosition" id="guidanceSteeringResetHudPositionButton"
+                                toolTipElementId="settingsHelpBoxText" toolTipText="$l10n_guidanceSteering_tooltip_resetHudPosition" />
+                </GuiElement>
+
             </ScrollingLayout>
             <Bitmap profile="fs25_stopClipper" name="bottomClipper" />
         </GuiElement>

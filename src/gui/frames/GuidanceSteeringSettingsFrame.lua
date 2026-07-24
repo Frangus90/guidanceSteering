@@ -68,6 +68,8 @@ GuidanceSteeringSettingsFrame.CONTROLS = {
 
     TOGGLE_DOT_LINES = "guidanceSteeringShowLinesAsDotsElement",
 
+    RESET_HUD_POSITION = "guidanceSteeringResetHudPositionButton",
+
     BOX_LAYOUT_SETTINGS = "boxLayoutSettings",
 }
 
@@ -365,6 +367,13 @@ function GuidanceSteeringSettingsFrame:onClickGenerateHeadland()
 
     local count = self.guidanceSteeringHeadlandPassCountElement:getState()
     vehicle:generateHeadlandPasses(count)
+end
+
+---Put the dragged HUD back at its default bottom-right position and forget the stored one.
+function GuidanceSteeringSettingsFrame:onClickResetHudPosition()
+    if self.ui ~= nil and self.ui.hud ~= nil then
+        self.ui.hud:resetPosition()
+    end
 end
 
 function GuidanceSteeringSettingsFrame:getUnitLength(meters)

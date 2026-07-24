@@ -34,6 +34,17 @@ function GuidanceSteeringHUD:new(mission, speedMeterDisplay, i18n, uiFilename)
     instance.receiverIconIsActive = false
     instance.steeringIconIsActive = false
     instance.laneText = "0"
+
+    -- Drag & drop state. posX/posY are the box's bottom-left corner in normalized screen
+    -- coordinates (0..1), i.e. resolution independent -- the same storage model Courseplay
+    -- uses for its moveable HUD (CpBaseHud.lua:82 getNormalizedScreenValues + #posX/#posY
+    -- floats). nil means "never moved": computeLayout falls back to the default bottom-right
+    -- anchor below.
+    instance.posX = nil
+    instance.posY = nil
+    instance.isDragging = false
+    instance.dragOffsetX = 0
+    instance.dragOffsetY = 0
     -- Current line method readout ("A+B" / "A+H" / "A+D"); set per frame from the
     -- vehicle's active guidance strategy (spec.lineStrategy.id) in onDraw.
     instance.methodText = ""
@@ -76,7 +87,80 @@ end
 
 function GuidanceSteeringHUD:load()
     self:createElements()
+    self:loadPosition()
     self:setVehicle(nil)
+end
+
+--- Absolute path of the per-user HUD position file. The modSettings folder under the user
+--- profile is the FS25 idiom for settings that are not tied to a savegame; path shape and
+--- createFolder usage from Courseplay (Courseplay.lua:19-20) and the fs25-modding
+--- hud-framework reference (User Settings Storage).
+function GuidanceSteeringHUD:getPositionFilePath()
+    if getUserProfileAppPath == nil or g_guidanceSteeringModName == nil then
+        return nil
+    end
+    return getUserProfileAppPath() .. "modSettings/" .. g_guidanceSteeringModName .. "/hud.xml"
+end
+
+--- Read the stored HUD position. Missing file, missing attributes or out-of-range values all
+--- leave posX/posY nil so computeLayout uses the default anchor.
+function GuidanceSteeringHUD:loadPosition()
+    local path = self:getPositionFilePath()
+    if path == nil or not fileExists(path) then
+        return
+    end
+
+    local xmlFile = XMLFile.load("GuidanceSteeringHudXML", path)
+    if xmlFile == nil then
+        return
+    end
+
+    local x = xmlFile:getFloat("guidanceSteeringHud.position#x")
+    local y = xmlFile:getFloat("guidanceSteeringHud.position#y")
+    xmlFile:delete()
+
+    -- Reject values that cannot be a screen fraction (hand-edited or written by a different
+    -- coordinate model); the clamp in computeLayout only fixes values that are still sane.
+    if x ~= nil and y ~= nil and x >= 0 and x <= 1 and y >= 0 and y <= 1 then
+        self.posX = x
+        self.posY = y
+    end
+end
+
+--- Persist the current HUD position. Called once when a drag ends, not per frame.
+function GuidanceSteeringHUD:savePosition()
+    local path = self:getPositionFilePath()
+    if path == nil or self.posX == nil or self.posY == nil then
+        return
+    end
+
+    createFolder(getUserProfileAppPath() .. "modSettings/" .. g_guidanceSteeringModName)
+
+    local xmlFile = XMLFile.create("GuidanceSteeringHudXML", path, "guidanceSteeringHud")
+    if xmlFile == nil then
+        -- Unwritable path (missing/locked modSettings folder, read-only profile). The HUD keeps
+        -- the dragged position for this session; it just won't survive a restart.
+        Logger.warning(("Could not write the HUD position file '%s'; position will not persist."):format(path))
+        return
+    end
+
+    xmlFile:setFloat("guidanceSteeringHud.position#x", self.posX)
+    xmlFile:setFloat("guidanceSteeringHud.position#y", self.posY)
+    xmlFile:save()
+    xmlFile:delete()
+end
+
+--- Drop the stored position and the file backing it, so the HUD returns to (and stays at)
+--- the default bottom-right anchor.
+function GuidanceSteeringHUD:resetPosition()
+    self.posX = nil
+    self.posY = nil
+    self.isDragging = false
+
+    local path = self:getPositionFilePath()
+    if path ~= nil and fileExists(path) then
+        deleteFile(path)
+    end
 end
 
 --- Create the (unpositioned) overlays once. Positioning/scaling happens per
@@ -166,8 +250,9 @@ function GuidanceSteeringHUD:getUiScale()
     return 1.0
 end
 
---- Compute the on-screen geometry for this frame. Everything is anchored to the
---- bottom-right safe-frame corner and scaled by the UI scale, converting pixel
+--- Compute the on-screen geometry for this frame. Everything is anchored to the box's
+--- bottom-left corner (dragged position, or by default the bottom-right safe-frame
+--- corner) and scaled by the UI scale, converting pixel
 --- sizes to normalized screen coordinates with getNormalizedScreenValues -- the
 --- same self-contained approach FS25_FuelConsumptionHUD uses
 --- (FuelConsumptionHUD.lua:492-508). Returns nil if any engine value is missing
@@ -193,16 +278,32 @@ function GuidanceSteeringHUD:computeLayout()
     local _, marginB = getNormalizedScreenValues(0, P.ANCHOR.BOTTOM_MARGIN * uiScale)
     local _, laneTextSize = getNormalizedScreenValues(0, P.LANE_TEXT.SIZE * uiScale)
     local laneGapX = getNormalizedScreenValues(P.LANE_TEXT.GAP * uiScale, 0)
+    local textReserve = getNormalizedScreenValues(P.LANE_TEXT.RESERVE * uiScale, 0)
 
     if boxW == nil or boxH == nil or iconW == nil or iconH == nil
         or padX == nil or padY == nil or gapY == nil
-        or marginR == nil or marginB == nil or laneTextSize == nil or laneGapX == nil then
+        or marginR == nil or marginB == nil or laneTextSize == nil or laneGapX == nil
+        or textReserve == nil then
         return nil
     end
 
-    local boxRightX = (1.0 - safeX) - marginR
-    local boxY = safeY + marginB          -- bottom edge of the box
-    local boxX = boxRightX - boxW         -- left edge of the box
+    -- Bottom-left corner of the box: the dragged position when the user has moved the HUD,
+    -- otherwise the original bottom-right safe-frame anchor.
+    local boxX, boxY
+    if self.posX ~= nil and self.posY ~= nil then
+        boxX, boxY = self.posX, self.posY
+    else
+        boxX = ((1.0 - safeX) - marginR) - boxW
+        boxY = safeY + marginB
+    end
+
+    -- Keep the whole widget on screen. The lane/method text is drawn to the LEFT of the box,
+    -- so the left bound reserves room for it; the default anchor is well inside these bounds,
+    -- so this is a no-op until the HUD is dragged. Re-clamping every frame also absorbs a
+    -- resolution or UI-scale change made after the position was saved.
+    boxX = math.clamp(boxX, textReserve, 1.0 - boxW)
+    boxY = math.clamp(boxY, 0.0, 1.0 - boxH)
+
     local boxTopY = boxY + boxH
 
     local iconX = boxX + padX
@@ -340,6 +441,76 @@ function GuidanceSteeringHUD:drawLaneText(layout)
     setTextVerticalAlignment(RenderText.VERTICAL_ALIGN_BASELINE)
 end
 
+--- Drag & drop repositioning. Routed here from GuidanceSteering:mouseEvent (the mod event
+--- listener), which is the FS25 way a non-GUI mod receives mouse input -- proven by
+--- FS25_Courseplay (Courseplay.lua:222-231 + addModEventListener at Courseplay.lua:313) and
+--- FS25_VehicleFruitHud (hlHudSystem.lua:93 + addModEventListener at hlHudSystem.lua:363).
+---
+--- Dragging is only possible while the mouse cursor is actually shown in-game
+--- (g_inputBinding:getShowMouseCursor(), the same global cursor state Courseplay's HUD gates
+--- on -- CpHud.lua:140/144/301), so normal driving is never affected. The caller already
+--- rejects the event while a menu is open.
+---
+--- The press/hold/release shape (grab offset on mouse-down, follow while held, commit on
+--- mouse-up) follows Courseplay's CpHudMoveableElement (HudElements.lua:370-419); hit testing
+--- uses GuiUtils.checkOverlayOverlap, the same helper it uses (HudElements.lua:73).
+function GuidanceSteeringHUD:mouseEvent(posX, posY, isDown, isUp, button)
+    if g_inputBinding == nil or not g_inputBinding:getShowMouseCursor() then
+        self:stopDrag()
+        return
+    end
+
+    -- Same visibility precondition as onDraw: no vehicle with guidance data, nothing drawn,
+    -- nothing to grab.
+    local vehicle = self.vehicle
+    if vehicle == nil or vehicle.spec_globalPositioningSystem == nil then
+        self:stopDrag()
+        return
+    end
+
+    local layout = self:computeLayout()
+    if layout == nil then
+        return
+    end
+
+    if button == Input.MOUSE_BUTTON_LEFT then
+        if isDown then
+            if not self.isDragging and GuiUtils.checkOverlayOverlap(posX, posY, layout.boxX, layout.boxY, layout.boxW, layout.boxH) then
+                self.isDragging = true
+                self.dragOffsetX = posX - layout.boxX
+                self.dragOffsetY = posY - layout.boxY
+            end
+        elseif isUp then
+            self:stopDrag()
+            return
+        end
+    end
+
+    if self.isDragging then
+        -- Store the raw corner; computeLayout clamps it back on screen every frame.
+        self.posX = posX - self.dragOffsetX
+        self.posY = posY - self.dragOffsetY
+    end
+end
+
+--- End an in-progress drag and persist where it landed. The clamped value is read back from
+--- the layout so the file never stores an off-screen corner.
+function GuidanceSteeringHUD:stopDrag()
+    if not self.isDragging then
+        return
+    end
+
+    self.isDragging = false
+
+    local layout = self:computeLayout()
+    if layout ~= nil then
+        self.posX = layout.boxX
+        self.posY = layout.boxY
+    end
+
+    self:savePosition()
+end
+
 function GuidanceSteeringHUD.speedMeterDisplay_draw(speedMeterDisplay)
     local mission = g_currentMission
     if mission == nil then
@@ -376,6 +547,9 @@ GuidanceSteeringHUD.ANCHOR = {
 GuidanceSteeringHUD.LANE_TEXT = {
     SIZE = 20,   -- text height in pixels
     GAP = 8,     -- gap between the box's left edge and the (right-aligned) lane text
+    -- Width budget kept free to the left of the box when clamping a dragged HUD on screen,
+    -- so the lane number / method label ("-12", "A+B") never runs off the left edge.
+    RESERVE = 60,
 }
 
 GuidanceSteeringHUD.UV = {

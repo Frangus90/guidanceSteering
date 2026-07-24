@@ -201,6 +201,25 @@ end
 function GuidanceSteering:draw(dt)
 end
 
+---Mod event listener entry point for mouse input (loader.lua registers us with
+---addModEventListener). Only used to drag the HUD; the g_gui guard keeps clicks inside any
+---open menu from reaching it. Signature and gating copied from FS25_Courseplay
+---(Courseplay.lua:222-231).
+function GuidanceSteering:mouseEvent(posX, posY, isDown, isUp, button)
+    if self.ui == nil or self.ui.hud == nil then
+        return
+    end
+
+    if g_gui:getIsGuiVisible() then
+        -- A menu opening mid-drag swallows the mouse-up, which would otherwise leave the HUD
+        -- glued to the cursor after the menu closes. End the drag where it stands instead.
+        self.ui.hud:stopDrag()
+        return
+    end
+
+    self.ui.hud:mouseEvent(posX, posY, isDown, isUp, button)
+end
+
 ---Add listener
 ---@param listener table
 function GuidanceSteering:subscribe(listener)
