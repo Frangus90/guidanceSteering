@@ -20,7 +20,9 @@
     This file therefore only defines the handful of gs-prefixed profiles the rebuilt frames
     still need: text/value/tooltip text styling, the plain (glyph-free) action buttons for
     width/offset, the two strategy columns, the self-contained text input, and the track
-    SmoothList styling. All use FS25 new-format <Value .../> attributes.
+    SmoothList styling. All use FS25 new-format <propertyName value="..."/> attributes
+    (GuiProfile:loadFromXML treats a bare <Value name="X" value="Y"/> child as deprecated
+    and logs "still uses old format" for each one).
 -->
 <GUIProfiles>
     <Presets>
@@ -44,7 +46,7 @@
     <Traits>
         <!-- Local replacement for the base "alternateRow" trait (fate unconfirmed in FS25). -->
         <Trait name="gsAlternateRow">
-            <Value name="imageColor" value="$preset_colorGlassExtremelyLight" />
+            <imageColor value="$preset_colorGlassExtremelyLight" />
         </Trait>
     </Traits>
 
@@ -58,7 +60,7 @@
          cp/config/gui/GUIProfiles.xml). Mirror it exactly so the label sits in the row's left
          area instead of overlapping the value/arrows. -->
     <Profile name="gsSettingsMultiOptionTitle" extends="fs25_settingsMultiTextOptionTitle">
-        <Value name="position" value="-500px 0px" />
+        <position value="-500px 0px" />
     </Profile>
 
     <!-- Row background. The base fs25_multiTextOptionContainer ships a bright default image
@@ -68,7 +70,7 @@
          as a white block behind each row (which also washes out the value/label text). Supply
          the dark row color here instead. -->
     <Profile name="gsMultiTextOptionContainer" extends="fs25_multiTextOptionContainer">
-        <Value name="imageColor" value="$preset_colorRowBg" />
+        <imageColor value="$preset_colorRowBg" />
     </Profile>
 
     <!-- ============================================================= -->
@@ -76,36 +78,36 @@
     <!-- ============================================================= -->
 
     <Profile name="gsTextBase">
-        <Value name="type" value="text" />
-        <Value name="textSize" value="16px" />
-        <Value name="textColor" value="$preset_colorWhite" />
-        <Value name="textVerticalAlignment" value="middle" />
-        <Value name="textAlignment" value="left" />
+        <type value="text" />
+        <textSize value="16px" />
+        <textColor value="$preset_colorWhite" />
+        <textVerticalAlignment value="middle" />
+        <textAlignment value="left" />
     </Profile>
 
     <!-- Tooltip / help line shown at the bottom of each frame. Target of every row's
          toolTipElementId (a Text: has setText, unlike the old help-box Bitmap). -->
     <Profile name="gsTooltipText" extends="gsTextBase">
-        <Value name="size" value="900px 40px" />
-        <Value name="textSize" value="15px" />
-        <Value name="textMaxWidth" value="900px" />
-        <Value name="textColor" value="0.85 0.85 0.85 1" />
-        <Value name="position" value="35px 24px" />
+        <size value="900px 40px" />
+        <textSize value="15px" />
+        <textMaxWidth value="900px" />
+        <textColor value="0.85 0.85 0.85 1" />
+        <position value="35px 24px" />
     </Profile>
 
     <!-- Width / offset current-value readout (highlighted). -->
     <Profile name="gsValueText" extends="gsTextBase">
-        <Value name="size" value="170px 45px" />
-        <Value name="textSize" value="20px" />
-        <Value name="textBold" value="true" />
-        <Value name="textColor" value="$preset_colorMainUI" />
-        <Value name="textAlignment" value="left" />
+        <size value="170px 45px" />
+        <textSize value="20px" />
+        <textBold value="true" />
+        <textColor value="$preset_colorMainUI" />
+        <textAlignment value="left" />
     </Profile>
 
     <Profile name="gsRowLabel" extends="gsTextBase">
-        <Value name="size" value="300px 45px" />
-        <Value name="textSize" value="16px" />
-        <Value name="textMaxWidth" value="300px" />
+        <size value="300px 45px" />
+        <textSize value="16px" />
+        <textMaxWidth value="300px" />
     </Profile>
 
     <!-- Compact settings section header. The base fs25_settingsSectionHeader is ~80px tall
@@ -116,8 +118,8 @@
          ~60px @2160p back per header (~300px total across the settings tab, ~120px across the
          strategy tab's two headers). -->
     <Profile name="gsSectionHeader" extends="fs25_settingsSectionHeader">
-        <Value name="height" value="50px" />
-        <Value name="margin" value="0px 4px 0px 2px" />
+        <height value="50px" />
+        <margin value="0px 4px 0px 2px" />
     </Profile>
 
     <!-- Section header for the right column, which is a PLAIN GuiElement (not a BoxLayout).
@@ -128,10 +130,10 @@
          Text follows the clean bottom-left model (verified against the empty-state text). Bold +
          uppercase to read like the left column's headers. -->
     <Profile name="gsRightSectionHeader" extends="gsTextBase">
-        <Value name="textSize" value="20px" />
-        <Value name="textBold" value="true" />
-        <Value name="textUpperCase" value="true" />
-        <Value name="textVerticalAlignment" value="middle" />
+        <textSize value="20px" />
+        <textBold value="true" />
+        <textUpperCase value="true" />
+        <textVerticalAlignment value="middle" />
     </Profile>
 
     <!-- ============================================================= -->
@@ -148,21 +150,21 @@
          FS25 green (there is no separate pressed-text state in TextElement:getTextColor, so a
          pressed button - which is also focused - shows the focused green). -->
     <Profile name="gsSettingsButton">
-        <Value name="type" value="button" />
-        <Value name="size" value="60px 45px" />
-        <Value name="textSize" value="20px" />
-        <Value name="textBold" value="true" />
-        <Value name="textColor" value="0.9 0.9 0.9 1" />
-        <Value name="textHighlightedColor" value="$preset_colorWhite" />
-        <Value name="textFocusedColor" value="$preset_colorFs25Green" />
-        <Value name="textSelectedColor" value="$preset_colorFs25Green" />
-        <Value name="textAlignment" value="center" />
-        <Value name="textVerticalAlignment" value="middle" />
+        <type value="button" />
+        <size value="60px 45px" />
+        <textSize value="20px" />
+        <textBold value="true" />
+        <textColor value="0.9 0.9 0.9 1" />
+        <textHighlightedColor value="$preset_colorWhite" />
+        <textFocusedColor value="$preset_colorFs25Green" />
+        <textSelectedColor value="$preset_colorFs25Green" />
+        <textAlignment value="center" />
+        <textVerticalAlignment value="middle" />
     </Profile>
 
     <Profile name="gsSettingsButtonWide" extends="gsSettingsButton">
-        <Value name="size" value="170px 45px" />
-        <Value name="textSize" value="16px" />
+        <size value="170px 45px" />
+        <textSize value="16px" />
     </Profile>
 
     <!-- Native rounded "pill" chrome, drawn as a static sibling BEHIND each action button.
@@ -178,22 +180,22 @@
          not disturb button focus/hit-testing. Cap width 11px scales the native 6/25 cap:height ratio
          (ButtonOverlay.lua:27) to the 45px button height. Same dark fill as the previous button face. -->
     <Profile name="gsButtonPill">
-        <Value name="imageSliceId" value="gui.button_middle" />
-        <Value name="startImageSliceId" value="gui.button_left" />
-        <Value name="endImageSliceId" value="gui.button_right" />
-        <Value name="startImageSize" value="11px 45px" />
-        <Value name="endImageSize" value="11px 45px" />
-        <Value name="imageColor" value="0.055 0.055 0.055 0.9" />
-        <Value name="startImageColor" value="0.055 0.055 0.055 0.9" />
-        <Value name="endImageColor" value="0.055 0.055 0.055 0.9" />
+        <imageSliceId value="gui.button_middle" />
+        <startImageSliceId value="gui.button_left" />
+        <endImageSliceId value="gui.button_right" />
+        <startImageSize value="11px 45px" />
+        <endImageSize value="11px 45px" />
+        <imageColor value="0.055 0.055 0.055 0.9" />
+        <startImageColor value="0.055 0.055 0.055 0.9" />
+        <endImageColor value="0.055 0.055 0.055 0.9" />
     </Profile>
 
     <!-- Container that holds a value readout + its action buttons on one row inside the
          settings ScrollingLayout. Children are placed at explicit positions so no nested
          layout pass is required. -->
     <Profile name="gsButtonRow" extends="emptyPanel">
-        <Value name="size" value="1000px 55px" />
-        <Value name="margin" value="30px 2px 15px 2px" />
+        <size value="1000px 55px" />
+        <margin value="30px 2px 15px 2px" />
     </Profile>
 
     <!-- ============================================================= -->
@@ -201,37 +203,37 @@
     <!-- ============================================================= -->
 
     <Profile name="gsTextInput">
-        <Value name="type" value="textInput" />
-        <Value name="size" value="360px 48px" />
+        <type value="textInput" />
+        <size value="360px 48px" />
         <!-- REQUIRED: TextInputElement:draw does (size[1] - maxInputTextWidth)/2 every frame,
              unconditionally. Without maxInputTextWidth it defaults to nil and the draw call
              throws "arithmetic (sub) on number and nil". Must be < size width. -->
-        <Value name="maxInputTextWidth" value="340px" />
-        <Value name="textSize" value="16px" />
-        <Value name="textColor" value="$preset_colorWhite" />
-        <Value name="textColorSelected" value="$preset_colorMainUI" />
-        <Value name="textVerticalAlignment" value="middle" />
-        <Value name="textAlignment" value="left" />
-        <Value name="textOffset" value="10px 0px" />
+        <maxInputTextWidth value="340px" />
+        <textSize value="16px" />
+        <textColor value="$preset_colorWhite" />
+        <textColorSelected value="$preset_colorMainUI" />
+        <textVerticalAlignment value="middle" />
+        <textAlignment value="left" />
+        <textOffset value="10px 0px" />
         <!-- Visible box. imageColor alone tints nothing without an image to draw, so the field
              showed just the typed value with no box (same overlay rule as the buttons above).
              gui.button_middle gives the input a real box face; colorRowBg keeps it dark, brightening
              on focus. -->
-        <Value name="imageSliceId" value="gui.button_middle" />
-        <Value name="imageColor" value="$preset_colorRowBg" />
+        <imageSliceId value="gui.button_middle" />
+        <imageColor value="$preset_colorRowBg" />
         <!-- Focus highlight. colorGlassLight (0.72 grey) drew as a jarring light-grey block
              behind the focused Track name field (user-flagged) that looked inconsistent with the
              dark, unfocused inputs. Use a subtle dark brighten instead so focus is still legible
              but the field stays in the same dark family as the rest. Applies to every gsTextInput
              (Track name + headland distance) so both remain consistent. -->
-        <Value name="imageFocusedColor" value="0.15 0.15 0.15 0.75" />
+        <imageFocusedColor value="0.15 0.15 0.15 0.75" />
     </Profile>
 
     <!-- Single settings-style row: label on the left, boxed TextInput on the right (positions
          set on the children in the frame XML), matching the height of the selector rows. -->
     <Profile name="gsTextInputRow" extends="emptyPanel">
-        <Value name="size" value="700px 55px" />
-        <Value name="margin" value="30px 2px 15px 2px" />
+        <size value="700px 55px" />
+        <margin value="30px 2px 15px 2px" />
     </Profile>
 
     <!-- ============================================================= -->
@@ -253,10 +255,10 @@
          - 0.0741 = 0.3356 frac = 363px. Screen<->ref px: X = px/1920, Y = px/1080 (1 ref px = 2
          screen px @3840x2160). -->
     <Profile name="gsStrategyLeftColumn" extends="emptyPanel">
-        <Value name="size" value="720px 400px" />
-        <Value name="position" value="30px 363px" />
-        <Value name="flowDirection" value="vertical" />
-        <Value name="alignmentY" value="top" />
+        <size value="720px 400px" />
+        <position value="30px 363px" />
+        <flowDirection value="vertical" />
+        <alignmentY value="top" />
     </Profile>
 
     <!-- Right column X derivation (GUI_DEBUG-measured): the widest left rows (the two
@@ -267,8 +269,8 @@
          at 885+609=1494 ref, 56 ref clear of the container's 1550 ref right edge. No list narrowing
          needed (container had 161 ref of right-side slack). -->
     <Profile name="gsStrategyRightColumn" extends="emptyPanel">
-        <Value name="size" value="620px 540px" />
-        <Value name="position" value="885px 223px" />
+        <size value="620px 540px" />
+        <position value="885px 223px" />
     </Profile>
 
     <!-- ============================================================= -->
@@ -282,14 +284,14 @@
              alignment (no listItemAlignment override) — the same as every working FS25 list
              (e.g. Courseplay's course list). An earlier listItemAlignment="end" was removed from
              the frame XML: it pushed the single rendered cell out of the clip rect (invisible). -->
-        <Value name="size" value="590px 484px" />
-        <Value name="selectOnScroll" value="true" />
-        <Value name="isHorizontalList" value="false" />
-        <Value name="itemsPerCol" value="11" />
-        <Value name="listItemHeight" value="49px" />
-        <Value name="listItemWidth" value="590px" />
-        <Value name="rowBackgroundProfile" value="gsTrackListItem" />
-        <Value name="rowBackgroundProfileAlternate" value="gsTrackListItemAlternate" />
+        <size value="590px 484px" />
+        <selectOnScroll value="true" />
+        <isHorizontalList value="false" />
+        <itemsPerCol value="11" />
+        <listItemHeight value="49px" />
+        <listItemWidth value="590px" />
+        <rowBackgroundProfile value="gsTrackListItem" />
+        <rowBackgroundProfileAlternate value="gsTrackListItemAlternate" />
     </Profile>
 
     <!-- Docked scrollbar for the track list. The base fs25_listSliderBox positions itself from
@@ -299,48 +301,48 @@
          just right of the 590px list; y=-112px drops it to the list top (112px below the column
          top, matching the header offset); height 484px matches the list. -->
     <Profile name="gsTrackListSliderBox" extends="fs25_listSliderBox" with="anchorTopLeft">
-        <Value name="size" value="9px 484px" />
-        <Value name="position" value="600px -112px" />
+        <size value="9px 484px" />
+        <position value="600px -112px" />
     </Profile>
 
     <Profile name="gsTrackListItem">
-        <Value name="type" value="listItem" />
+        <type value="listItem" />
         <!-- REQUIRED for any row visuals to draw: like the buttons/text-input above, imageColor
              tints nothing without an image slice, so the rows (and, crucially, the selected-row
              highlight) were invisible. gui.button_middle is the proven flat slice used elsewhere
              in this frame. Unselected rows stay near-transparent (colorListRowBackground alpha),
              selected/focused rows show the opaque UI blue so the current track is visible. -->
-        <Value name="imageSliceId" value="gui.button_middle" />
-        <Value name="imageColor" value="$preset_colorListRowBackground" />
-        <Value name="imageFocusedColor" value="$preset_colorMainUI" />
-        <Value name="imageSelectedColor" value="$preset_colorMainUI" />
-        <Value name="size" value="590px 47px" />
-        <Value name="position" value="0px 0px" />
+        <imageSliceId value="gui.button_middle" />
+        <imageColor value="$preset_colorListRowBackground" />
+        <imageFocusedColor value="$preset_colorMainUI" />
+        <imageSelectedColor value="$preset_colorMainUI" />
+        <size value="590px 47px" />
+        <position value="0px 0px" />
     </Profile>
     <Profile name="gsTrackListItemAlternate" extends="gsTrackListItem" with="gsAlternateRow" />
 
     <Profile name="gsTrackListItemTitle" extends="gsTextBase">
-        <Value name="size" value="590px 47px" />
-        <Value name="textMaxWidth" value="560px" />
-        <Value name="textVerticalAlignment" value="middle" />
-        <Value name="textSize" value="17px" />
-        <Value name="textBold" value="false" />
-        <Value name="textOffset" value="20px 2px" />
-        <Value name="textFocusedOffset" value="20px 2px" />
+        <size value="590px 47px" />
+        <textMaxWidth value="560px" />
+        <textVerticalAlignment value="middle" />
+        <textSize value="17px" />
+        <textBold value="false" />
+        <textOffset value="20px 2px" />
+        <textFocusedOffset value="20px 2px" />
     </Profile>
 
     <!-- Empty-state helper text, shown in the track-list column when there are no saved tracks.
          Positioned near the top of the 620x540 right column (position is from the column's
          bottom-left), wrapping within the list width. -->
     <Profile name="gsTrackListEmptyText" extends="gsTextBase">
-        <Value name="size" value="560px 120px" />
+        <size value="560px 120px" />
         <!-- Sits just under the SAVED TRACKS header, at the top of the (now shorter) list area
              so the empty message reads directly below the header. -->
-        <Value name="position" value="20px 357px" />
-        <Value name="textMaxWidth" value="540px" />
-        <Value name="textSize" value="17px" />
-        <Value name="textColor" value="0.85 0.85 0.85 1" />
-        <Value name="textVerticalAlignment" value="top" />
-        <Value name="textAlignment" value="left" />
+        <position value="20px 357px" />
+        <textMaxWidth value="540px" />
+        <textSize value="17px" />
+        <textColor value="0.85 0.85 0.85 1" />
+        <textVerticalAlignment value="top" />
+        <textAlignment value="left" />
     </Profile>
 </GUIProfiles>
