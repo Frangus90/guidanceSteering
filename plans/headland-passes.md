@@ -197,6 +197,39 @@ detection completes and N green/white loops draw around the field boundary.
     while headland is the active source.
   - **Diagnostics.** `Logger.info` on steering-engage (loop index + direction) and
     on active-loop advance (from→to + the two nearest-distances).
+  - **Corner release (locked design).** Smoothed field corners survive at ~1-3 m
+    radius, far below any tractor's 5-7 m minimum, so pure pursuit there only
+    saturates the wheel and overshoots. At such corners GS **releases the wheel
+    entirely** instead of attempting them.
+    - *Generation time.* `computeLoopRadii` stores a `radius` on every point of each
+      FINAL loop (post-offset, post-`removeSelfIntersections`, since insetting
+      tightens corners further): `radius = arcLength / totalHeadingChange` over a
+      `CURVATURE_WINDOW` (4 m) arc centred on the point, summing ABSOLUTE per-vertex
+      turn angles so an S-bend cannot cancel to "straight". No bend ⇒ `math.huge`.
+      A radius is stored rather than a baked is-a-corner flag so the threshold can
+      use the CURRENT vehicle's capability.
+    - *Follow time.* `checkCornerRelease` (called from `updateSteering` before any
+      steering is issued) scans `minRadiusAhead` over look-ahead plus the configured
+      **headland act distance** and fires when any point in that horizon has
+      `radius < vehicle.maxTurningRadius * CORNER_RADIUS_MARGIN` (1.2). The act
+      distance is additional to the pure-pursuit look-ahead so the follower never
+      aims through an unchecked corner; changing it directly shifts how early GPS
+      releases. Vehicles without a `maxTurningRadius` never release.
+    - *Actions.* Cruise control off (guarded `setCruiseControlState(OFF)`, the same
+      call `StoppedState:onEntry` uses), then full disengage via the SAME flag the
+      Alt+X toggle writes — `spec.lastInputValues.guidanceSteeringIsActive = false`
+      (`GlobalPositioningSystem.actionEventEnableSteering:1239`). The next
+      `updateNetworkInputs` clears `spec.guidanceSteeringIsActive` and fires
+      `onSteeringStateChanged(false)` (deactivate sample, state-machine reset, MP
+      dirty flag), so the state is exactly a user toggle-off. Cue is the mod's usual
+      `showBlinkingWarning` (`guidanceSteering_warning_headlandCornerRelease`); the
+      disengage sample fires naturally from the toggle path, no new audio.
+    - *No auto-reacquire, by design.* The player drives the corner and presses Alt+X
+      again, which re-acquires the nearest loop unchanged. Re-trigger spam is
+      impossible: the release frame issues no steering, and from the next frame
+      `onUpdate` no longer reaches `updateSteering`.
+    - *Headland only.* The trigger lives in the headland follower, which AB/straight
+      strategies never enter.
   *Verify:* vehicle auto-steers around the active loop (player throttles), stays
   within a lane-width tolerance, rounds gentle corners without oscillation, and
   switches to the next inner loop on the width-threshold crossing.

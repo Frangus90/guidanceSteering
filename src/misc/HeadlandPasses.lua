@@ -23,7 +23,7 @@ HeadlandPasses.STATE_READY = 3
 
 HeadlandPasses.DEFAULT_PASS_COUNT = 3
 HeadlandPasses.MAX_PASS_COUNT = 10
-HeadlandPasses.DETECTION_TIMEOUT = 15000 -- ms; abort a detection that never completes
+HeadlandPasses.DETECTION_TIMEOUT = 240000 -- ms; abort a detection that never completes (big fields can take minutes, like base GPS/CP)
 HeadlandPasses.DETECTION_TOLERANCE = 0.00025 -- the value Courseplay pumps FieldCourseField:update with
 HeadlandPasses.DRAW_STEP = 5 -- m; subdivide drawn loop edges so the line follows terrain
 
@@ -54,6 +54,19 @@ HeadlandPasses.LOOK_AHEAD_BASE = 5 -- m
 HeadlandPasses.LOOK_AHEAD_SPEED = 0.25 -- m per km/h
 HeadlandPasses.LOOK_AHEAD_MIN = 5 -- m
 HeadlandPasses.LOOK_AHEAD_MAX = 12 -- m
+
+-- Corner release: field corners survive smoothing at a ~1-2 m radius, far below any tractor's
+-- ~5-7 m minimum turning radius, so pure pursuit through them only saturates the steering and
+-- overshoots. Instead the follower hands the wheel back to the player at such corners.
+--
+-- ==> TUNING KNOBS: raise CORNER_RADIUS_MARGIN to release more eagerly (a corner counts as too
+--     sharp once its radius is below maxTurningRadius * margin), lower it to attempt tighter
+--     corners. The user-facing headland act distance controls how far past the pure-pursuit target
+--     the scanner looks, and therefore how early guidance releases. CURVATURE_WINDOW is the arc
+--     length the per-point radius is measured over: shorter reads sharper (more local) corners,
+--     longer averages them out.
+HeadlandPasses.CORNER_RADIUS_MARGIN = 1.2 -- release when point radius < maxTurningRadius * this
+HeadlandPasses.CURVATURE_WINDOW = 4 -- m; arc length the heading change is measured over
 
 -- Same RGB constants ABStrategy uses (ABStrategy.lua:23-25) so headland loops read identically to
 -- AB guidance lines: green = active line, blue = next lane, white = inactive.
@@ -228,6 +241,115 @@ local function walkAlongLoop(points, segIndex, t, dir, distance)
     end
 
     return cx, cz
+end
+
+---Stores a required-turn-radius on every point of a closed {x,y,z} loop. The radius at point i is
+---measured over an arc-length window of CURVATURE_WINDOW metres centred on i:
+---`radius = arcLength / totalHeadingChange`, where totalHeadingChange sums the ABSOLUTE turn angle
+---at every vertex inside the window (summed, not net, so an S-bend cannot cancel itself out and
+---read as straight). A window that barely bends yields math.huge, i.e. "straight".
+---A radius is stored per point rather than a baked "is a corner" flag because the follow-time
+---threshold depends on the CURRENT vehicle's maxTurningRadius, which is unknown at generation time.
+---@param points table {x,y,z} closed polygon; each point gets a `radius` field (mutated in place)
+local function computeLoopRadii(points)
+    local n = #points
+
+    -- Segment i runs points[i] -> points[i+1]; keep its length and unit direction.
+    local segLen, segDirX, segDirZ = {}, {}, {}
+    for i = 1, n do
+        local a = points[i]
+        local b = points[i % n + 1]
+        local dx, dz = b.x - a.x, b.z - a.z
+        local len = math.sqrt(dx * dx + dz * dz)
+        segLen[i] = len
+        if len > 0.0001 then
+            segDirX[i], segDirZ[i] = dx / len, dz / len
+        else
+            segDirX[i], segDirZ[i] = 0, 0
+        end
+    end
+
+    -- Unsigned turn angle AT vertex i = angle between the incoming segment (i-1) and outgoing (i).
+    -- A degenerate segment has no direction, so it contributes no turn instead of a spurious 90 deg.
+    local turn = {}
+    for i = 1, n do
+        local p = (i - 2) % n + 1
+        if segLen[p] < 0.0001 or segLen[i] < 0.0001 then
+            turn[i] = 0
+        else
+            local dot = segDirX[p] * segDirX[i] + segDirZ[p] * segDirZ[i]
+            turn[i] = math.acos(math.clamp(dot, -1, 1))
+        end
+    end
+
+    -- Grow the window out of vertex i in both directions, a whole segment at a time, until each
+    -- side has covered half the window. The step guards only bound the walk on a pathologically
+    -- short ring (perimeter < CURVATURE_WINDOW); generateLoops' area guard rules that out in
+    -- practice, and over-counting there would only shrink the radius, i.e. err towards releasing.
+    local half = HeadlandPasses.CURVATURE_WINDOW * 0.5
+    for i = 1, n do
+        local bend = turn[i]
+
+        local back, j, steps = 0, i, 0
+        while back < half and steps < n do
+            local seg = (j - 2) % n + 1 -- segment leading INTO vertex j
+            back = back + segLen[seg]
+            j = seg                    -- its far end is vertex (j-1) = seg
+            steps = steps + 1
+            bend = bend + turn[j]
+        end
+
+        local fwd = 0
+        j, steps = i, 0
+        while fwd < half and steps < n do
+            fwd = fwd + segLen[j] -- segment leading OUT of vertex j
+            j = j % n + 1
+            steps = steps + 1
+            bend = bend + turn[j]
+        end
+
+        points[i].radius = bend > 0.0001 and (back + fwd) / bend or math.huge
+    end
+end
+
+---Smallest stored point radius within `distance` metres ahead of (segIndex, t) along a closed
+---{x,y,z} loop, walking in traversal direction dir. Mirrors walkAlongLoop's traversal (including
+---the ring wrap-around) but samples every vertex it passes instead of stopping at one target.
+---Returns math.huge when nothing in the horizon bends.
+local function minRadiusAhead(points, segIndex, t, dir, distance)
+    local n = #points
+    local i = segIndex
+    local a = points[i]
+    local b = points[i % n + 1]
+    local cx = a.x + (b.x - a.x) * t
+    local cz = a.z + (b.z - a.z) * t
+    local remaining = distance
+    local minRadius = math.huge
+
+    for _ = 1, n + 1 do
+        local vIndex, nextI
+        if dir >= 0 then
+            vIndex = i % n + 1
+            nextI = vIndex
+        else
+            vIndex = i
+            nextI = (i - 2) % n + 1
+        end
+
+        local v = points[vIndex]
+        local ex, ez = v.x - cx, v.z - cz
+        local el = math.sqrt(ex * ex + ez * ez)
+        if el >= remaining then
+            return minRadius
+        end
+
+        remaining = remaining - el
+        minRadius = math.min(minRadius, v.radius or math.huge)
+        cx, cz = v.x, v.z
+        i = nextI
+    end
+
+    return minRadius
 end
 
 ---Removes LOCAL self-intersections ("bowtie" loop-backs) from an inset {x,y,z} polygon. When a
@@ -571,6 +693,12 @@ function HeadlandPasses:updateSteering(vehicle, dt)
         HeadlandPasses.LOOK_AHEAD_BASE + lastSpeed * HeadlandPasses.LOOK_AHEAD_SPEED,
         HeadlandPasses.LOOK_AHEAD_MIN, HeadlandPasses.LOOK_AHEAD_MAX)
 
+    -- Corner release: bail out BEFORE issuing any steering this frame if the loop ahead corners
+    -- tighter than this vehicle can physically steer.
+    if self:checkCornerRelease(vehicle, points, segIndex, t, dir, lookAhead) then
+        return
+    end
+
     local targetX, targetZ = walkAlongLoop(points, segIndex, t, dir, lookAhead)
 
     if not self.hasLoggedEngage then
@@ -593,6 +721,64 @@ function HeadlandPasses:updateSteering(vehicle, dt)
         speed = math.min(speed, drivable_spec.cruiseControl.speed)
     end
     vehicle:getMotor():setSpeedLimit(speed)
+end
+
+---Hands the wheel back to the player when the loop ahead corners tighter than the vehicle can
+---physically steer. Field corners survive smoothing at ~1-2 m radius, far below any tractor's
+---~5-7 m minimum turning radius, so pure pursuit there only saturates the steering and overshoots.
+---
+---The disengage goes through the SAME flag the Alt+X steering toggle writes --
+---spec.lastInputValues.guidanceSteeringIsActive (GlobalPositioningSystem.actionEventEnableSteering,
+---GlobalPositioningSystem.lua:1239; forced false the same way at :1136). The next
+---GlobalPositioningSystem.updateNetworkInputs (:451, runs before the steering branch in onUpdate)
+---therefore clears spec.guidanceSteeringIsActive, fires onSteeringStateChanged(false) -- deactivate
+---sample, state-machine reset, MP dirty flag -- and inj_updateVehiclePhysics stops injecting. The
+---state ends up exactly as if the player had toggled off, so re-engaging with Alt+X (which
+---re-acquires the nearest loop) works unchanged. Cruise control is switched off first, the same
+---guarded call StoppedState:onEntry (StoppedState.lua:29-32) already uses for the headland STOP mode.
+---By design there is NO auto-reacquire: the player drives the corner and presses Alt+X again.
+---
+---Re-trigger is impossible: this frame issues no steering and returns, and from the next frame on
+---updateSteering is no longer reached because onUpdate gates it on spec.guidanceSteeringIsActive.
+---@param vehicle table
+---@param points table active loop points (each carrying the generation-time `radius`)
+---@param segIndex number nearest segment index from nearestOnLoop
+---@param t number parameter along that segment
+---@param dir number traversal direction (+1/-1)
+---@param lookAhead number current pure-pursuit look-ahead distance
+---@return boolean true when the release fired; the caller must then steer no further this frame
+function HeadlandPasses:checkCornerRelease(vehicle, points, segIndex, t, dir, lookAhead)
+    -- Wheels only resolves maxTurningRadius for vehicles with steering geometry; without it we have
+    -- no capability to compare against, so never release.
+    local maxTurningRadius = vehicle.maxTurningRadius
+    if maxTurningRadius == nil or maxTurningRadius <= 0 then
+        return false
+    end
+
+    local threshold = maxTurningRadius * HeadlandPasses.CORNER_RADIUS_MARGIN
+    -- The pure-pursuit target is already `lookAhead` metres away. Scan the configured act distance
+    -- beyond it so the setting directly shifts when a sharp upcoming corner releases guidance while
+    -- never letting the follower aim through a corner that has not yet been checked.
+    local gpsSpec = vehicle.spec_globalPositioningSystem
+    local actDistance = math.max(gpsSpec.headlandActDistance or OnHeadlandState.DEFAULT_ACT_DISTANCE, 0)
+    local horizon = lookAhead + actDistance
+    local minRadius = minRadiusAhead(points, segIndex, t, dir, horizon)
+    if minRadius >= threshold then
+        return false
+    end
+
+    local drivable_spec = vehicle:guidanceSteering_getSpecTable("drivable")
+    if drivable_spec.cruiseControl.state ~= Drivable.CRUISECONTROL_STATE_OFF then
+        vehicle:setCruiseControlState(Drivable.CRUISECONTROL_STATE_OFF)
+    end
+
+    vehicle.spec_globalPositioningSystem.lastInputValues.guidanceSteeringIsActive = false
+
+    g_currentMission:showBlinkingWarning(g_i18n:getText("guidanceSteering_warning_headlandCornerRelease"), 3000)
+    Logger.info(("HeadlandPasses: corner release on loop %d (radius %.2fm < %.2fm; act distance %.1fm, total horizon %.1fm)"):format(
+        self.activeLoopIndex, minRadius, threshold, actDistance, horizon))
+
+    return true
 end
 
 ---Converts the engine's {x,z} boundary line into an {x,y,z} polygon, dropping the repeated
@@ -666,6 +852,10 @@ function HeadlandPasses:generateLoops(boundary, width, passCount)
         if newSign ~= baseSign or math.abs(area) < minArea then
             break
         end
+
+        -- Corner-release input: measure the turn radius the loop demands at every point. Done on the
+        -- FINAL points (post-offset, post-cull) because insetting tightens corners further.
+        computeLoopRadii(points)
 
         table.insert(loops, { index = i, points = points, closed = true })
     end

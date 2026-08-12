@@ -116,7 +116,7 @@
         <text name="guidanceSteering_tooltip_headlandMode" text="With the headland mode you can set the acting strategy on the headland."/>
 
         <text name="guidanceSteering_setting_headlandDistance" text="Headland act distance"/>
-        <text name="guidanceSteering_tooltip_headlandDistance" text="Distance in meters to act before approaching the headland."/>
+        <text name="guidanceSteering_tooltip_headlandDistance" text="Distance in meters to act before approaching the headland. For headland passes, this controls how early guidance releases before a sharp corner."/>
 
         <text name="guidanceSteering_setting_headlandPasses" text="Headland passes"/>
         <text name="guidanceSteering_tooltip_headlandPasses" text="Number of passes to generate around the field boundary."/>
@@ -127,6 +127,7 @@
         <text name="guidanceSteering_warning_headlandNoField" text="No field boundary found. Stand on a field and try again."/>
         <text name="guidanceSteering_warning_headlandTooSmall" text="Field too small for the chosen headland width."/>
         <text name="guidanceSteering_warning_headlandUnavailable" text="Field boundary detection is unavailable."/>
+        <text name="guidanceSteering_warning_headlandCornerRelease" text="Sharp corner - guidance released."/>
 
         <text name="guidanceSteering_setting_header_hud" text="HUD"/>
         <text name="guidanceSteering_setting_resetHudPosition" text="Reset HUD position"/>
